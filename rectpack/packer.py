@@ -1,4 +1,5 @@
 from .maxrects import MaxRectsBssf
+from .skyline import SkylineBl, SkylineBlWm
 
 import operator
 import itertools
@@ -151,7 +152,7 @@ class PackerBFFMixin(object):
 
 class PackerBBFMixin(object):
     """
-    BBF (Bin Best Fit): Pack rectangle in bin that gives best fitness
+    BBF (Bin Best Fit): Pack rectangle in bin that gives best fitness ###
     """
 
     # only create this getter once
@@ -523,11 +524,12 @@ PackingBin = Enum(["BNF", "BFF", "BBF", "Global"])
 
 def newPacker(mode=PackingMode.Offline, 
          bin_algo=PackingBin.BBF, 
-        pack_algo=MaxRectsBssf,
+        # pack_algo=MaxRectsBssf,
+        pack_algo=SkylineBl,
         sort_algo=SORT_AREA, 
         rotation=True):
     """
-    Packer factory helper function
+    Packer factory helper function 主函数
 
     Arguments:
         mode (PackingMode): Packing mode
@@ -560,7 +562,7 @@ def newPacker(mode=PackingMode.Offline,
             packer_class = PackerBNF
         elif bin_algo == PackingBin.BFF:
             packer_class = PackerBFF
-        elif bin_algo == PackingBin.BBF:
+        elif bin_algo == PackingBin.BBF: ###
             packer_class = PackerBBF
         elif bin_algo == PackingBin.Global:
             packer_class = PackerGlobal
