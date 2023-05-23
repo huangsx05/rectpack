@@ -28,20 +28,23 @@ def sheet_size_selection_ocod(sheet_size_list, label_size, re_qty, fix_orientati
   """
   step 1: sheet size selection的主方法
   遍历sheet_size_list，选择pds*sheet_area最小的sheet_size
+  for OCOD case，一个batch只有一个DG，所以ups = sum(ups), 无需update sheet size selection的criteria
   """
   res={}
   #计算ups
   for sheet_size in sheet_size_list:
-    # print(f'calculating sheet_size {sheet_size}, re_qty={re_qty}')
-    temp_res = layout_one_color_one_dimension_in_one_sheet(label_size, sheet_size, fix_orientation) ###--->>>
+    print(f'calculating sheet_size {sheet_size}, re_qty={re_qty}')
+    temp_res, temp_is_rotated = layout_one_color_one_dimension_in_one_sheet(label_size, sheet_size, fix_orientation) ###--->>>
     temp_ups = temp_res['n_rows']*temp_res['n_cols']+temp_res['n_rows_rotated']*temp_res['n_cols_rotated']
     temp_pds = np.ceil(re_qty/temp_ups)
-    # print(res)
-    # print(temp_res)
+    print(f"res = {res}")
+    print(f"temp_res = {temp_res}")
     res[str(sheet_size)] = temp_res
+    res[str(sheet_size)]['is_rotated'] = temp_is_rotated    
     res[str(sheet_size)]['ups'] = temp_ups
     res[str(sheet_size)]['pds'] = temp_pds
     res[str(sheet_size)]['tol_area'] = temp_pds*sheet_size[0]*sheet_size[1]
+  
   #选择sheet_size
   # print(res)
   best_sheet_size = sheet_size_list[0]
@@ -50,6 +53,7 @@ def sheet_size_selection_ocod(sheet_size_list, label_size, re_qty, fix_orientati
     if res[str(sheet_size)]['tol_area']<cur_tol_area:
       cur_tol_area = res[str(sheet_size)]['tol_area']
       best_sheet_size = sheet_size
+  print(f'best_sheet_size, res[str(best_sheet_size) = {best_sheet_size}, {res[str(best_sheet_size)]}')
   return best_sheet_size, res[str(best_sheet_size)]
 
 
@@ -62,10 +66,10 @@ def layout_one_color_one_dimension_in_one_sheet(label_size, sheet_size, fix_orie
   :return res: res = {'n_rows':0, 'n_cols':0, 'n_rows_rotated':0, 'n_cols_rotated':0}
   """
   if fix_orientation==1:
-    res = layout_fix_orientation_one_dimension_in_one_sheet(label_size, sheet_size) ###--->>>
+    res, is_rotated = layout_fix_orientation_one_dimension_in_one_sheet(label_size, sheet_size) ###--->>>
   else:
-    res = layout_rotatable_one_dimension_in_one_sheet(label_size, sheet_size) ###--->>>
-  return res
+    res, is_rotated = layout_rotatable_one_dimension_in_one_sheet(label_size, sheet_size) ###--->>>
+  return res, is_rotated
 
 
 def layout_fix_orientation_one_dimension_in_one_sheet(label_size, sheet_size):
@@ -74,9 +78,11 @@ def layout_fix_orientation_one_dimension_in_one_sheet(label_size, sheet_size):
   :param label_size: [label_width, label_length]
   :param sheet_size: [sheet_width, sheet_length], sheet_width>=sheet_length, sheet必须横放
   """
+  print(f'fix_orientation==1, layout_fix_orientation_one_dimension_in_one_sheet')  
   n_rows = int(sheet_size[1]/label_size[1])  
   n_cols = int(sheet_size[0]/label_size[0])
-  return {'n_rows':n_rows, 'n_cols':n_cols, 'n_rows_rotated':0, 'n_cols_rotated':0}
+  is_rotated = False
+  return {'n_rows':n_rows, 'n_cols':n_cols, 'n_rows_rotated':0, 'n_cols_rotated':0}, is_rotated
 
 
 def layout_rotatable_one_dimension_in_one_sheet(label_size, sheet_size):
@@ -85,20 +91,25 @@ def layout_rotatable_one_dimension_in_one_sheet(label_size, sheet_size):
   :param label_size: [label_width, label_length], label_width>=label_length
   :param sheet_size: [sheet_width, sheet_length], sheet_width>=sheet_length, sheet必须横放
   """
+  print(f'fix_orientation==0, layout_rotatable_one_dimension_in_one_sheet')      
   #情况1：旋转前
   res, n_ups = layout_rotatable_one_dimension_in_one_sheet_single_step(label_size, sheet_size)
 
   #情况2：旋转后
   label_size_2 = [label_size[1],label_size[0]]
-  res_2, n_ups_2 = layout_rotatable_one_dimension_in_one_sheet_single_step(label_size_2, sheet_size)
+  res_temp, n_ups_2 = layout_rotatable_one_dimension_in_one_sheet_single_step(label_size_2, sheet_size)
+  res_2 = {'n_rows': res_temp['n_rows_rotated'], 'n_cols': res_temp['n_cols_rotated'], 
+          'n_rows_rotated': res_temp['n_rows'], 'n_cols_rotated': res_temp['n_cols']}  
 
   #输出结果
-  # print(f'rotate condition 1 = {res}')
-  # print(f'rotate condition 2 = {res_2}')
+  print(f'label_size = {label_size}, rotate condition 1 = {res}')
+  print(f'label_size = {label_size_2}, rotate condition 2 = {res_2}')
   if n_ups >= n_ups_2:
-    return res
+    is_rotated = False
+    return res, is_rotated
   else:
-    return res_2
+    is_rotated = True
+    return res_2, is_rotated
     
 
 def layout_rotatable_one_dimension_in_one_sheet_single_step(label_size, sheet_size):
@@ -139,27 +150,27 @@ def check_criteria_ocod(x, criteria_dict):
 
 # ------ 1.3 allocate sku ------
 
-def allocate_sku_ocod(sku_qty_dict, n_ups):
-  """
-  算法一：以小到大
-  :param sku_qty_dict: {sku:qty}, 每一个sku的qty
-  :param n_ups: int, 所有sku的ups总和
-  """
-  sku_list = list(sku_qty_dict.keys())
-  qty_list = list(sku_qty_dict.values())
-  cur_ups = [1]*len(sku_qty_dict)
-  while np.sum(cur_ups)<n_ups:
-    cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
-    imax = cur_pds.index(max(cur_pds))
-    cur_ups[imax] += 1
+# def allocate_sku_ocod(sku_qty_dict, n_ups):
+#   """
+#   算法一：以小到大
+#   :param sku_qty_dict: {sku:qty}, 每一个sku的qty
+#   :param n_ups: int, 所有sku的ups总和
+#   """
+#   sku_list = list(sku_qty_dict.keys())
+#   qty_list = list(sku_qty_dict.values())
+#   cur_ups = [1]*len(sku_qty_dict)
+#   while np.sum(cur_ups)<n_ups:
+#     cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
+#     imax = cur_pds.index(max(cur_pds))
+#     cur_ups[imax] += 1
   
-  res_dict = {}
-  cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
-  for i in range(len(sku_qty_dict)):
-    res_dict[sku_list[i]] = {'qty':qty_list[i],
-                              'ups':cur_ups[i], 
-                              'pds':int(np.ceil(cur_pds[i]))}
-  return res_dict
+#   res_dict = {}
+#   cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
+#   for i in range(len(sku_qty_dict)):
+#     res_dict[sku_list[i]] = {'qty':qty_list[i],
+#                               'ups':cur_ups[i], 
+#                               'pds':int(np.ceil(cur_pds[i]))}
+#   return res_dict
 
 
 # ---------------------

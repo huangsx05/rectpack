@@ -2,8 +2,12 @@ import numpy as np
 
 def allocate_cols_based_on_qty(tot_n_cols, qty_list):
   tot_qty = np.sum(qty_list)
-  n_cols = [round(qty/tot_qty*tot_n_cols) for qty in qty_list] #每个dg的初始列数
-  n_cols = n_cols[:-1] + [tot_n_cols-np.sum(n_cols[:-1])] #调整最后一个dg的列数，保证列数总和等于tot_n_cols
+  n_cols = [np.max([round(qty/tot_qty*tot_n_cols),1]) for qty in qty_list] #每个dg的初始列数, 并保证至少有一列
+  n_max_index = np.argmax(n_cols)
+  # print(f'n_max_index={n_max_index}')
+  updated_n_col = tot_n_cols - np.sum(n_cols[:n_max_index]) - np.sum(n_cols[n_max_index+1:])
+  n_cols[n_max_index] = updated_n_col #调整最多列数的dg，保证列数总和等于tot_n_cols
+  assert tot_n_cols == np.sum(n_cols)
   return n_cols
 
 

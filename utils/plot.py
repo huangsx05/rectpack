@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 
-def plot_rectangle(x,y,w,h,color):
+def plot_rectangle(x,y,w,h,color='blue'):
   """
   plot a rectangle
   x,y: origin
@@ -32,7 +32,7 @@ def plot_n_rectangle_full_sheet_height(x,y,w,h,w_sheet,h_sheet,n_rec,color):
   n_rec: rectangle数量  
   """
   plot_rectangle(x,y,w,h,color) #plot第一个rec
-  for i in range(1,n_rec): 
+  for i in range(1,int(n_rec)): 
     y = y+h
     # print(f'y={y}')
     # print(f'h={h}')
@@ -55,7 +55,7 @@ def plot_ups_ocod(label_size, sheet_size, layout_dict, scale=60):
 
   label_size = [i/scale for i in label_size]
   sheet_size = [i/scale for i in sheet_size]
-  plt.figure(figsize=(sheet_size[0], sheet_size[1]))
+  # plt.figure(figsize=(sheet_size[0], sheet_size[1]))
 
   #plot sheet
   x,y = 0,0 #原点
@@ -81,7 +81,7 @@ def plot_ups_ocod(label_size, sheet_size, layout_dict, scale=60):
       y = layout_dict['n_rows']*label_size[1]
     plot_rectangle_array(x,y,w,h,layout_dict['n_rows_rotated'],layout_dict['n_cols_rotated'],color)    
   
-  plt.show()
+  # plt.show()
 
 
 def plot_full_height_for_each_dg_with_ink_seperator(sheet_size, ink_seperator_width, dg_id, cg_id, label_w_list, label_h_list, n_cols, ups_list):
