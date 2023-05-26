@@ -1,13 +1,23 @@
-# import re
 import numpy as np
-# import pandas as pd
-# from rectpack import newPacker
+from utils.tools import allocate_cols_based_on_qty
 
 # -------------------------------------
 # ------ 2. ONE COLOR MORE DIMENSION ------
 # -------------------------------------
 
 # ------ 1.1 filter ------
+
+
+def only_keep_cg_with_mul_dgs(df_2):
+  cols = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length']
+  df_2 = df_2[['cg_dg_id']+cols+['re_qty']]
+
+  #过滤：只考虑有多行的cg_id，因为单行的应该在OCOD考虑
+  df_2_cg_count = df_2.groupby('cg_id')['cg_dg_id'].count().reset_index().sort_values('cg_dg_id', ascending=False)
+  multi_dg_cg = df_2_cg_count[df_2_cg_count['cg_dg_id']>1]['cg_id'].values
+  df_2 = df_2[df_2['cg_id'].isin(multi_dg_cg)].sort_values(['cg_id', 're_qty'], ascending=[True, False])
+  return df_2
+
 
 def filter_id_by_criteria_ocmd(df_2, cg_id, sheet_size_list, criteria_dict):
   """
@@ -16,19 +26,17 @@ def filter_id_by_criteria_ocmd(df_2, cg_id, sheet_size_list, criteria_dict):
   fail_criteria = True
   df_temp = df_2[df_2['cg_id']==cg_id]
   sum_qty = df_temp['re_qty'].sum()
-  max_label_area = df_temp['label_area'].max() #基于area判断是不对的
-  1/0 #需要改正
-  # print(f'{cg_id}, sum_qty={sum_qty}, max_label_area={max_label_area}')
+  max_dimension = np.max([df_temp['overall_label_width'].max(), df_temp['overall_label_length'].max()])
   for sheet_size in sheet_size_list:
-    sheet_area = int(sheet_size[0])*int(sheet_size[1])
-    min_ups = int(sheet_area/max_label_area)
+    n_rows_low_lim = int(sheet_size[1]/max_dimension)
+    n_cols_low_lim = int(sheet_size[0]/max_dimension)
+    min_ups = n_rows_low_lim*n_cols_low_lim
     max_pds = np.ceil(sum_qty/min_ups)
     sheet_size_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
     if max_pds>=criteria_dict[sheet_size_name]['pds']:
       fail_criteria = False
       break
-
-
+  return fail_criteria
 
 def get_coordinates_for_each_ups_on_one_sheetsize(sheet_size,dg_id,label_w_list,label_h_list,ups_list):
   #初始化
@@ -98,12 +106,9 @@ def layout_ocmd_with_fixed_ups_on_one_sheetsize(sheet_size,dg_id,label_w_list,la
     label_h = label_h_list[index]
     n_ups = ups_list[index]
 
-    #step 1: 如果已经有col, 先往每个col上方的剩余空间塞
-    # if index!=0:
+    #如果已经有col, 先往每个col上方的剩余空间塞
     i = 0
     while n_ups>0:
-    # for i in range(max_n_cols): #对每一列
-      # print(i, max_n_cols)
       add_n_ups = np.min([int(left_col_h[i]/label_h),n_ups]) #该列剩余空间可放的ups数量
       if add_n_ups==0: #如果当前列放不下，尝试下一列
         i+=1
@@ -112,22 +117,8 @@ def layout_ocmd_with_fixed_ups_on_one_sheetsize(sheet_size,dg_id,label_w_list,la
           break
 
       # #---------------------------------------------
-      # # 可提升空间：这部分可以先省略，找到最优解之后再计算
       if add_n_ups>0:
-      #   #添加新增ups的左下角坐标
-      #   if i==0:
-      #     x = 0
-      #   else:
-      #     x = np.sum(used_col_w[:i])
-      #   y = used_col_h[i]
-
         for n in range(add_n_ups): #每一个新增的ups
-      #     x_n = x
-      #     y_n = y+n*label_h
-      #     ups_info = [x_n,y_n,label_w,label_h,dg_i]
-      #     # print(ups_info_by_col)
-      #     # print(ups_info)
-      #     ups_info_by_col[i].append(ups_info)
       #     #更新layout信息
           used_col_h[i] += label_h
           left_col_h[i] -= label_h
@@ -135,57 +126,12 @@ def layout_ocmd_with_fixed_ups_on_one_sheetsize(sheet_size,dg_id,label_w_list,la
       
       used_col_w[i] = np.max([used_col_w[i], label_w])
       n_ups = np.max([(n_ups-add_n_ups),0])
-      # if n_ups==0:
-      #   break
-
-    # #step 2: 开新的full height columns
-    # max_n_rows = int(sheet_size[1]/label_h)
-    # full_n_cols = int(n_ups/max_n_rows)
-    # left_n_ups = n_ups-full_n_cols*max_n_rows
-
-    # if left_n_ups>0:
-    #   used_col_w += [label_w]*(full_n_cols+1) #剩余ups多占用一个col，所以+1
-    #   used_col_h += [max_n_rows*label_h]*full_n_cols #full columns
-    #   used_col_h.append(left_n_ups*label_h) #剩余ups所在的column
-    #   #判断是否超出sheet_size
-    #   left_sheet_w = sheet_size[0] - np.sum(used_col_w)
-    #   if left_sheet_w<0:
-    #     return False, []         
-    # else:
-    #   used_col_w += [label_w]*full_n_cols
-    #   used_col_h += [max_n_rows*label_h]*full_n_cols  
-    #   #判断是否超出sheet_size
-    #   left_sheet_w = sheet_size[0] - np.sum(used_col_w)
-    #   if left_sheet_w<0:
-    #     return False, []            
-
-    # #如果尚未超出sheet_size，更新当前结果
-    # left_col_h = [sheet_size[0]-h for h in used_col_h] 
-    # #添加整列的ups的info  
-    # x_pre = np.sum(used_col_w)
-    # col_cnt_pre = len(used_col_w)    
-    # for n_c in range(full_n_cols):   
-    #   x_n = x_pre+n_c*label_w
-    #   y_pre = 0
-    #   for n_r in range(max_n_rows):           
-    #     y_n = y_pre+n_r*label_h
-    #     ups_info = [x_n,y_n,label_w,label_h,dg_id]
-    #     ups_info_by_col[col_cnt_pre+n_r].append(ups_info)  
-
-    # if left_n_ups>0:              
-    #   #添加剩余的ups的info
-    #   x_pre_update = np.sum(used_col_w)
-    #   y_pre_update = 0
-    #   for n_u in range(left_n_ups):
-    #     x_n = x_pre_update
-    #     y_n = y_pre_update+n_u*label_h
-    #     ups_info = [x_n,y_n,label_w,label_h,dg_id]
-    #     ups_info_by_col[col_cnt_pre+full_n_cols].append(ups_info) 
 
   return can_layout#, ups_info_by_col
 
 
-def iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list,label_h_list):
+def iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list,label_h_list,
+                                            n_cols_search_lower,n_ups_search_upper):
   """
   遍历所有情况获得ups分配的最优解
   """
@@ -193,9 +139,9 @@ def iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list
   label_area_list = np.multiply(label_w_list,label_h_list)
   
   # --- 在sheet_size上做layout ---
-  n_rows_upper_lim = [int(sheet_size[1]/h) for h in label_h_list] #每一个dg的行数
-  n_cols_upper_lim = [int(sheet_size[0]/w) for w in label_w_list] #每一个dg的最大列数
-  n_ups_upper_lim = np.multiply(n_rows_upper_lim, n_cols_upper_lim)
+  # n_rows_upper_lim = [int(sheet_size[1]/h) for h in label_h_list] #每一个dg的行数
+  # n_cols_upper_lim = [int(sheet_size[0]/w) for w in label_w_list] #每一个dg的最大列数
+  # n_ups_upper_lim = np.multiply(n_rows_upper_lim, n_cols_upper_lim)
 
   if len(label_w_list)==1:
     # return n_ups_upper_lim, [np.ceil(re_qty[0]/n_ups_upper_lim[0])], 
@@ -209,9 +155,9 @@ def iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list
     # best_ups_layout = None
 
     #找最优ups的解
-    for i in range(1,n_ups_upper_lim[0]+1):
+    for i in range(n_cols_search_lower[0],n_ups_search_upper[0]+1):
       # print(f'iterating {i} --- iterate_to_get_best_ups_list_allocation ---')
-      for j in range(1,n_ups_upper_lim[1]+1): ###多一层循环需要改这
+      for j in range(n_cols_search_lower[1],n_ups_search_upper[1]+1): ###多一层循环需要改这
         ups_list = [i,j] ###多一层循环需要改这        
         #根据总面积筛除不合理组合
         if np.sum(np.multiply(ups_list, label_area_list))>sheet_area:
@@ -251,29 +197,47 @@ def get_ups_layout_for_ocmd_comb_on_one_sheetsize(dg_id,label_w_list,label_h_lis
   label_w_list,label_h_list,re_qty,dg_id,dg_index_list = zip(*zipped_sorted)
   # print('after sorting: ',label_w_list,label_h_list,re_qty,dg_id,dg_index_list)  
 
-  #初始解：按照tot_cols_init预分配 
-  # tot_ups_init = np.min(np.multiply(n_rows_upper_lim, n_cols_upper_lim)) #初始总列数
-  # n_cols = allocate_cols_based_on_qty(tot_cols, re_qty)
-  # print('n_dg, n_rows, n_cols_upper_lim, tot_cols, tot_qty, n_cols = ', n_dg, n_rows, n_cols_upper_lim, tot_cols, n_cols)
+  # --- 在sheet_size上做layout ----------------------------------------------
+  effective_sheet_width = sheet_size[0] #one color，不需要预留ink seperator
+  n_rows = [int(sheet_size[1]/h) for h in label_h_list] #每一个dg的最大行数
+  n_cols_upper_lim = [int(effective_sheet_width/w) for w in label_w_list] #每一个dg的最大列数
 
-  # #逐步增大列数直至超出effective_sheet_width
-  # label_width_sum = sum(np.multiply(n_cols, label_w_list))
-  # temp_tot_cols = tot_cols
-  # while label_width_sum < effective_sheet_width:
-  #   temp_tot_cols += 1
-  #   temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, re_qty)
-  #   label_width_sum = sum(np.multiply(temp_n_cols, label_w_list))
-  #   if label_width_sum <= effective_sheet_width: #有效解，更新结果
-  #     tot_cols = temp_tot_cols
-  #     n_cols = temp_n_cols
+  #初始解：按照初始tot_cols预分配 
+  tot_cols = np.min(n_cols_upper_lim) #初始总列数
+  n_cols = allocate_cols_based_on_qty(tot_cols, re_qty)
+  # print(f'n_cols heuristics initial solution = {n_cols}')
+  n_ups = np.multiply(n_rows, n_cols)
+  # print(f'n_ups heuristics initial solution = {n_ups}')  
+
+  #逐步增大列数直至超出effective_sheet_width
+  label_width_sum = sum(np.multiply(n_cols, label_w_list))
+  temp_tot_cols = tot_cols
+  while label_width_sum < effective_sheet_width:
+    temp_tot_cols += 1
+    temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, re_qty)
+    label_width_sum = sum(np.multiply(temp_n_cols, label_w_list))
+    if label_width_sum <= effective_sheet_width: #有效解，更新结果
+      tot_cols = temp_tot_cols
+      n_cols = temp_n_cols
+  # print(f'n_cols heuristics final solution = {n_cols}')
+  n_ups = np.multiply(n_rows, n_cols)
+  # print(f'n_ups heuristics final solution = {n_ups}')  
+
+  tolerance = 2 #hardcode tolerance for n_col
+  # n_cols_upper_lim = n_cols
+  n_cols_search_upper = [int(i+tolerance) for i in n_cols]
+  n_cols_search_lower = [int(np.max([i-tolerance,0])) for i in n_cols] #因为考虑互扣，所以允许下限为0
+  n_ups_search_upper = np.multiply(n_rows, n_cols_search_upper)
+  n_ups_search_lower = np.multiply(n_rows, n_cols_search_lower)  
+  n_ups_search_upper = [int(np.max([i,1])) for i in n_ups_search_upper]
+  n_cols_search_lower = [int(np.max([i,1])) for i in n_cols_search_lower]  
+  print(f'n_ups heuristics search range = {n_ups_search_lower} to {n_ups_search_upper}')  
+  #---------------------------------------------------------------------------
 
   #遍历所有情况获得ups分配的最优解
-  ups_list, pds_list, ups_info_by_col = iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list,label_h_list) #每一个dg分配多少个ups
-  # print(n_cols, n_rows)
-  # ups_list = list(np.multiply(n_cols, n_rows))
-  # pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-  # print(f'n_rows={n_rows}, n_cols={n_cols}, ups={ups_list}, pds={pds_list}')  
-  # print(f'label_width_sum={label_width_sum}, effective_sheet_width={effective_sheet_width}')  
+  ups_list, pds_list, ups_info_by_col = iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list,label_h_list,
+                                                                                n_cols_search_lower,n_ups_search_upper) #每一个dg分配多少个ups
+  # print(f'final ups_list = {ups_list}')
 
  # dg_id重排序，以和输入时的dg_id排序一致
   dg_layout_seq = list(range(len(dg_id))) #存储dg的layout排序，利于之后画图 

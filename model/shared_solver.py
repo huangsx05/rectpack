@@ -6,6 +6,7 @@ from model.mcmd_solver import get_n_cols_for_dg_comb_on_one_sheetsize
 # ------ for UPS Layout ------
 
 def get_best_sheetsize_for_one_dg_comb(sheet_size_list, dg_id,cg_id,label_w_list,label_h_list,re_qty,ink_seperator_width,
+                                       criteria_dict,
                                        mode='one_dg_one_column'):
   """
   遍历所有sheet_size，依据目标最小的原则选择最优的sheet_size
@@ -25,7 +26,14 @@ def get_best_sheetsize_for_one_dg_comb(sheet_size_list, dg_id,cg_id,label_w_list
       stop_flag = 1/0      
     batch_the_pds = np.ceil(np.sum(re_qty)/np.sum(ups_list))  
     # print(f'dg_id={dg_id}, re_qty={re_qty}, ups_list={ups_list}, batch_the_pds={batch_the_pds}')
-    tot_area = sheet_size[0]*sheet_size[1]*batch_the_pds ######根据ppc要求，用batch_the_pds而不是max_pds
+
+    #get sheet_weight
+    sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
+    sheet_weight = criteria_dict[sheet_name]['weight']
+
+    #判断当前结果是否更优
+    tot_area = batch_the_pds*sheet_weight ######根据ppc要求，用batch_the_pds而不是max_pds,并且要考虑和sheet_size相对应的weight
+    # tot_area = sheet_size[0]*sheet_size[1]*batch_the_pds ######根据ppc要求，用batch_the_pds而不是max_pds,并且要考虑和sheet_size相对应的weight    
     if tot_area<min_tot_area:
       min_tot_area = tot_area
       best_sheet = sheet_size
@@ -65,7 +73,9 @@ def iterate_to_solve_min_total_sheet_area(sheet_size_list,comb_names,comb_res_w,
     label_h_list = [float(h) for h in label_h_list]
 
     #对当前comb，遍历所有sheet_size，选择总面积最小的sheet_size
-    sheet, res, tot_area = get_best_sheetsize_for_one_dg_comb(sheet_size_list, dg_id,cg_id,label_w_list,label_h_list,re_qty,ink_seperator_width,mode) ###--->>>
+    sheet, res, tot_area = get_best_sheetsize_for_one_dg_comb(sheet_size_list, dg_id,cg_id,label_w_list,label_h_list,re_qty,ink_seperator_width,
+                                                              criteria_dict,
+                                                              mode) ###--->>>
 
     #判断解是否符合criteria
     if check_criteria:
@@ -149,7 +159,7 @@ def split_abc_ups(sub_id, sub_id_colname, df, ups_dict):
   for set_name in sets:
     if set_name in df.columns:
       df.fillna(0,inplace=True)
-      df_temp = df[df['dimension_group']==sub_id]
+      df_temp = df[df[sub_id_colname]==sub_id]
       print(f'sum_ups for {set_name} = {np.sum(df_temp[set_name])}') #确认每个set的ups相等
 
   df = df.sort_values([sub_id_colname,'sku_pds'])    

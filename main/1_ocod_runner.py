@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
-from utils.load_data import load_config, load_and_clean_data, initialize_dg_level_results, initialize_sku_level_results
+from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_level_df, initialize_dg_level_results, initialize_sku_level_results
 from utils.plot import plot_ups_ocod
 from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
 from model.ocod_solver import filter_id_by_criteria_ocod, sheet_size_selection_ocod, check_criteria_ocod
@@ -45,16 +45,13 @@ params_dict = {
   'sheet_size_list':sheet_size_list
   }
 
-# for k,v in params_dict.items():
-#   print(f'{k}: {v}')
-
 # COMMAND ----------
 
-#algo inputs
+#algo inputs - add to params_dict
 config_file = f"../config/config_panyu_htl.yaml"
 params_dict = load_config(config_file, params_dict)
-for k,v in params_dict.items():
-  print(f'{k}: {v}')
+# for k,v in params_dict.items():
+#   print(f'{k}: {v}')
 
 # COMMAND ----------
 
@@ -63,24 +60,17 @@ for k,v in params_dict.items():
 
 # COMMAND ----------
 
-input_file = "../input/HTL_input_0419.csv"
-# filter_Color_Group = ["CG_26"]
-filter_Color_Group = [] #空代表不筛选，全部计算
+filter_Color_Group = ["CG_08"]
+# filter_Color_Group = [] #空代表不筛选，全部计算
 
 # COMMAND ----------
 
 #sample config
 criteria = params_dict['criteria']
+input_file = params_dict['input_file']
 n_abc = params_dict['n_abc']
 OCOD_filter = params_dict['OCOD_filter']
 OCOD_criteria_check = params_dict['OCOD_criteria_check']
-
-# COMMAND ----------
-
-df = pd.read_csv(input_file)
-if len(filter_Color_Group)>0:
-  df = df[df['Color_Group'].isin(filter_Color_Group)]
-display(df)
 
 # COMMAND ----------
 
@@ -89,26 +79,40 @@ display(df)
 
 # COMMAND ----------
 
-#inputs
-#clean intput data
-df = load_and_clean_data(df)
-display(df)
-
-#aggregation by cg_dg
-#以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
-cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length']
-agg_dict = {'re_qty':'sum'}
-for c in cols_to_first:
-  agg_dict[c] = 'first'
-df_1 = df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
-display(df_1)
+# MAGIC %md
+# MAGIC #### - inputs
 
 # COMMAND ----------
 
-#outputs
+df = pd.read_csv(input_file)
+if len(filter_Color_Group)>0:
+  df = df[df['Color_Group'].isin(filter_Color_Group)]
+display(df) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
+
+# COMMAND ----------
+
+#clean intput data
+df = load_and_clean_data(df)
+display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
+
+# COMMAND ----------
+
+#aggregation by cg_dg 以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
+df_1 = agg_to_get_dg_level_df(df)
+display(df_1) #dg颗粒度的input data
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### - outputs
+
+# COMMAND ----------
+
 #初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
 df_res = initialize_dg_level_results(df)
 display(df_res)
+
+# COMMAND ----------
 
 #初始化结果文件Files_to_ESKO的file-3
 res_file_3 = initialize_sku_level_results(df)
@@ -157,8 +161,8 @@ print(f'qualified_id_list = {id_list_1_1}')
 # MAGIC %md
 # MAGIC #### 1.2  OCOD Layout
 # MAGIC 对于每一个ocod id, 选择最优的sheet_size，并决定在该sheet_size上的layout  
-# MAGIC  - 遍历sheet_size_list中的sheet_size, 选择pdsxsheet_area最小的sheet_size  
-# MAGIC    (实际的目标是pdsxsheet_area最小，且多一个batch相当于多N个pds。但在OCOD的情况下，全是一个cg_dg一个batch，所以目标简化为pds*sheet_area最小。）
+# MAGIC  - 遍历sheet_size_list中的sheet_size, 选择pds x sheet_area最小的sheet_size  
+# MAGIC    (实际的目标是pds x sheet_area最小，且多一个batch相当于多N个pds。但在OCOD的情况下，全是一个cg_dg一个batch，所以目标简化为pds*sheet_area最小。）
 # MAGIC  - for both fix_orientation==0 and fix_orientation==1, 遍历旋转和不旋转两种情况
 
 # COMMAND ----------
@@ -170,14 +174,14 @@ df_1_2 = df_1[df_1['cg_dg_id'].isin(id_list_1_1)] #根据1.1的结果筛选需�
 
 #寻找最优sheet_size并计算ups和pds
 for cg_dg_rotate_id in id_list_1_1:
-  print(f'------ calculating for {cg_dg_rotate_id} ------')
+  # print(f'------ calculating for {cg_dg_rotate_id} ------')
   df_temp = df_1_2[df_1_2['cg_dg_id']==cg_dg_rotate_id]
   label_size = [df_temp['overall_label_width'].values[0], df_temp['overall_label_length'].values[0]]
   fix_orientation = int(df_temp['fix_orientation'].values[0])
   # print(f'label_size={label_size}, fix_orientation={fix_orientation}')
   re_qty = df_temp['re_qty'].values[0]
   best_sheet_size, res = sheet_size_selection_ocod(sheet_size_list, label_size, re_qty, fix_orientation) ###--->>>遍历sheet_size
-  print(f'res = {res}')
+  # print(f'res = {res}')
   
   #formulate results
   cur_label_w = df_1_2.loc[df_1_2['cg_dg_id']==cg_dg_rotate_id,'overall_label_width']
@@ -193,7 +197,7 @@ for cg_dg_rotate_id in id_list_1_1:
   
 #根据criteria再次确认结果
 df_1_2['pds_check'] = df_1_2.apply(lambda x: check_criteria_ocod(x, criteria['one_cg_one_dg']), axis=1)
-df_1_2['checkpoint_1.1'] = df_1_2['pds_check']
+df_1_2['checkpoint_ocod'] = df_1_2['pds_check']
 print('results for all ocod ids')
 display(df_1_2)
 
@@ -202,14 +206,14 @@ display(df_1_2)
 #后接口
 #把df拆分为两部分，第一部在ocod做sku分配，第二部分做ocmd
 if OCOD_criteria_check:
-  df_1_2 = df_1_2[df_1_2['checkpoint_1.1']==True] #for sku allocation
+  df_1_2 = df_1_2[df_1_2['checkpoint_ocod']==True] #for sku allocation
   print('results for qualified ocod ids')
   display(df_1_2)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### 1.3 allocate SKU  
+# MAGIC #### 1.5 allocate SKU  
 
 # COMMAND ----------
 
@@ -217,98 +221,6 @@ if OCOD_criteria_check:
 pass_cg_dg_ids_1_2 = list(df_1_2['cg_dg_id'].unique())
 ups_1_2_dict = dict(zip(df_1_2['cg_dg_id'], df_1_2['ups'].astype('int')))
 print('ups: ', ups_1_2_dict)
-
-# COMMAND ----------
-
-##### (1) 单版方案
-# if n_abc==1:
-#   #sku allocation 计算
-#   if len(pass_cg_dg_ids_1_2)==0:
-#     df_1_3 = pd.DataFrame()
-#   else:
-#     #get data for this step
-#     df_1_3 = df[df['cg_dg_id'].isin(pass_cg_dg_ids_1_2)]
-#     cols = ['cg_dg_id','cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length','sku_id','re_qty']
-#     df_1_3 = df_1_3[cols]
-
-#     #allocate sku
-#     for cg_dg_id in pass_cg_dg_ids_1_2:
-#       df_1_3_temp = df_1_3[df_1_3['cg_dg_id']==cg_dg_id]
-#       # print(f'------ sku allocation for {cg_dg_id} ------')
-#       res_1_3 = allocate_sku_ocod(dict(zip(df_1_3_temp['sku_id'], df_1_3_temp['re_qty'].astype('int'))), ups_1_2_dict[cg_dg_id]) ###### --->>>
-#       # print(res_1_3)
-#       con_1 = df_1_3['cg_dg_id']==cg_dg_id
-#       for sku_id, sku_res_dict in res_1_3.items():
-#         con_2 = df_1_3['sku_id']==sku_id
-#         df_1_3.loc[con_1&con_2, 'sku_ups'] = sku_res_dict['ups']
-#         df_1_3.loc[con_1&con_2, 'sku_pds'] = sku_res_dict['pds']
-
-# df_1_3 = df_1_3.sort_values(['cg_id','dimension_group','sku_id'])
-# #后接口
-# display(df_1_3)
-# # print(f"单版结果sum_pds = {np.max(df_1_3['sku_pds'].values)}")
-
-# COMMAND ----------
-
-##### (2) 多版方案
-# if n_abc>1:
-#   print('single sheet ups: ', ups_1_2_dict)
-
-#   if len(pass_cg_dg_ids_1_2)==0:
-#     df_1_5 = pd.DataFrame()
-#   else:
-#     df_1_5 = df_1_3.copy()
-#     #按照n_abc*ups分配allocate sku
-#     for cg_dg_id in pass_cg_dg_ids_1_2:
-#       df_1_5_temp = df_1_3[df_1_3['cg_dg_id']==cg_dg_id]
-#       # print(f'------ sku allocation for {cg_dg_id} ------')
-#       res_1_5 = allocate_sku_ocod(dict(zip(df_1_5_temp['sku_id'], df_1_5_temp['re_qty'].astype('int'))), ups_1_2_dict[cg_dg_id]*n_abc) ### --->>>
-#       # print(res_1_5)
-#       con_1 = df_1_5['cg_dg_id']==cg_dg_id
-#       for sku_id, sku_res_dict in res_1_5.items():
-#         con_2 = df_1_5['sku_id']==sku_id
-#         df_1_5.loc[con_1&con_2, 'sku_ups'] = sku_res_dict['ups']
-#         df_1_5.loc[con_1&con_2, 'sku_pds'] = sku_res_dict['pds']
-
-#     df_1_5 = df_1_5.sort_values(['cg_dg_id','sku_pds']).reset_index().drop(columns=['index'])
-#     df_1_5['cum_sum_ups'] = df_1_5.groupby(['cg_dg_id'])['sku_ups'].cumsum()   
-
-#     #split ABC sheets
-#     sets = ['Set A Ups','Set B Ups','Set C Ups','Set D Ups','Set E Ups','Set F Ups','Set G Ups']
-#     for cg_dg_id in pass_cg_dg_ids_1_2:
-#       print(f'------ calculating for {cg_dg_id} ------')
-#       df_1_5_temp = df_1_5[df_1_5['cg_dg_id']==cg_dg_id].reset_index().drop(columns=['index'])  
-#       n = 1
-#       cur_set_index = 0
-#       sum_pds = 0
-#       for i in range(len(df_1_5_temp)):
-#         cur_ups_thres = n*ups_1_2_dict[cg_dg_id]
-#         sku_id = df_1_5_temp.loc[i,'sku_id']
-#         set_name = sets[cur_set_index]
-#         # print(cur_set_index, set_name)      
-#         # print(df_1_5_temp.loc[i,'cum_sum_ups'],cur_ups_thres)
-#         if df_1_5_temp.loc[i,'cum_sum_ups']<=cur_ups_thres:
-#           df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = df_1_5['sku_ups']
-#         else:
-#           sum_pds += df_1_5_temp.loc[i,'sku_pds']
-#           pre_sku_ups = cur_ups_thres - df_1_5_temp.loc[i-1,'cum_sum_ups']
-#           df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = pre_sku_ups #pre sheet
-#           next_sku_ups = df_1_5_temp.loc[i,'sku_ups'] - pre_sku_ups
-#           n += 1
-#           cur_set_index += 1  
-#           set_name = sets[cur_set_index]
-#           # print(cur_set_index, set_name)   
-#           df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = next_sku_ups #next_sheet       
-#       sum_pds += df_1_5_temp['sku_pds'].values[-1]
-
-#     for set_name in sets:
-#       if set_name in df_1_5.columns:
-#         df_1_5.fillna(0,inplace=True)
-#         print(f'sum_ups for {set_name} = {np.sum(df_1_5[set_name])}')
-#     display(df_1_5)
-#     print(f"ABC版结果 sum_pds = {sum_pds}")
-# else:
-#   print(f'n_abc = {n_abc}<=1')
 
 # COMMAND ----------
 
@@ -340,43 +252,7 @@ else:
   #做ABC版的ups分割（每个版的ups应该相等）split ABC sheets
   sets = ['Set A Ups','Set B Ups','Set C Ups','Set D Ups','Set E Ups','Set F Ups','Set G Ups','Set H Ups'] #预设版数
   for cg_dg_id in pass_cg_dg_ids_1_2:
-    df_1_5 = split_abc_ups(sub_id=cg_dg_id, sub_id_colname='cg_dg_id', df=df_1_5, ups_dict=ups_1_2_dict)    
-    # print(f'------ calculating for {cg_dg_id} ------')
-    # df_1_5_temp = df_1_5[df_1_5['cg_dg_id']==cg_dg_id].reset_index().drop(columns=['index'])  
-    # # n = 1 #当前的ups倍数
-    # cur_set_index = 0
-    # # sum_pds = 0
-    # for i in range(len(df_1_5_temp)): #对每一个sku
-  #     cur_ups_thres = (cur_set_index+1)*ups_1_2_dict[cg_dg_id]
-  #     sku_id = df_1_5_temp.loc[i,'sku_id']
-  #     set_name = sets[cur_set_index]
-  #     # print(cur_set_index, set_name)      
-  #     # print(df_1_5_temp['cum_sum_ups'].values.tolist())      
-  #     # print(df_1_5_temp.loc[i,'cum_sum_ups'],cur_ups_thres)
-  #     if df_1_5_temp.loc[i,'cum_sum_ups']<=cur_ups_thres: #无需换版
-  #       df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = df_1_5['sku_ups']
-  #     else: #换到下一个版，当前sku需要分配到两个不同的版
-  #       # sum_pds += df_1_5_temp.loc[i,'sku_pds']
-  #       if i==0:
-  #         pre_sku_ups = cur_ups_thres
-  #       else:
-  #         pre_sku_ups = cur_ups_thres - df_1_5_temp.loc[i-1,'cum_sum_ups']          
-  #       df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = pre_sku_ups #pre sheet
-  #       next_sku_ups = df_1_5_temp.loc[i,'sku_ups'] - pre_sku_ups
-  #       # n += 1
-  #       cur_set_index += 1  
-  #       set_name = sets[cur_set_index]
-  #       # print(cur_set_index, set_name)   
-  #       df_1_5.loc[df_1_5['sku_id']==sku_id, set_name] = next_sku_ups #next_sheet       
-  #   # sum_pds += df_1_5_temp['sku_pds'].values[-1]
-
-  #   for set_name in sets:
-  #     if set_name in df_1_5.columns:
-  #       df_1_5.fillna(0,inplace=True)
-  #       df_1_5_temp = df_1_5[df_1_5['cg_dg_id']==cg_dg_id]
-  #       print(f'sum_ups for {set_name} = {np.sum(df_1_5_temp[set_name])}') #确认每个set的ups相等
-  
-  # df_1_5 = df_1_5.sort_values(['cg_dg_id','sku_pds'])
+    df_1_5 = split_abc_ups(sub_id=cg_dg_id, sub_id_colname='cg_dg_id', df=df_1_5, ups_dict=ups_1_2_dict) ###--->>>
 
 # COMMAND ----------
 
@@ -405,19 +281,18 @@ for cg_dg_id in pass_cg_dg_ids_1_2:
 
   plt.figure(figsize=(sheet_width/scale, sheet_length/scale))
   plt.title(f"{cg_dg_id}, 'label_size={label_width}x{label_length}', 'sheet_size={sheet_width}x{sheet_length}'") 
-  plot_ups_ocod([label_width, label_length], [sheet_width, sheet_length], layout_dict) ###### --->>>
-  # plt.show() 
+  plot_ups_ocod([label_width, label_length], [sheet_width, sheet_length], layout_dict) ###--->>>
 
 # COMMAND ----------
 
 #DG level results - 更新结果和PPC比较的结果df_res，同时也是Files_to_ESKO的file-1
-df_res = prepare_dg_level_results(df_res, df_1_2, df_1_5, pass_cg_dg_ids_1_2)
+df_res = prepare_dg_level_results(df_res, df_1_2, df_1_5, pass_cg_dg_ids_1_2) ###--->>>
 display(df_res)
 
 # COMMAND ----------
 
 #sku level results - 更新结果文件Files_to_ESKO的file-3
-res_file_3 = prepare_sku_level_results(res_file_3, df_1_5)
+res_file_3 = prepare_sku_level_results(res_file_3, df_1_5) ###--->>>
 display(res_file_3)
 
 # COMMAND ----------

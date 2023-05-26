@@ -17,10 +17,10 @@ def plot_rectangle_array(x,y,w,h,n_rows,n_cols,color):
   plot 矩形阵列
   """
   for i in range(n_cols): 
-    x = w*i
+    x1 = x+w*i
     for j in range(n_rows):
-      y = h*j
-      plot_rectangle(x,y,w,h,color)
+      y1 = y+h*j
+      plot_rectangle(x1,y1,w,h,color)
 
 
 def plot_n_rectangle_full_sheet_height(x,y,w,h,w_sheet,h_sheet,n_rec,color):
@@ -55,6 +55,7 @@ def plot_ups_ocod(label_size, sheet_size, layout_dict, scale=60):
 
   label_size = [i/scale for i in label_size]
   sheet_size = [i/scale for i in sheet_size]
+  # print(f'after scale, label_size={label_size}')           
   # plt.figure(figsize=(sheet_size[0], sheet_size[1]))
 
   #plot sheet
@@ -76,10 +77,13 @@ def plot_ups_ocod(label_size, sheet_size, layout_dict, scale=60):
     if label_size[0]>label_size[1]: #添加列
       x = layout_dict['n_cols']*label_size[0]
       y = 0
+      print(f'plot rotated labels on the right, x,y={x},{y}')      
     else: #添加行
       x = 0
       y = layout_dict['n_rows']*label_size[1]
-    plot_rectangle_array(x,y,w,h,layout_dict['n_rows_rotated'],layout_dict['n_cols_rotated'],color)    
+      # print(f'plot rotated labels on the top, x,y={x},{y}')            
+    print(x,y,h,w,layout_dict['n_rows_rotated'],layout_dict['n_cols_rotated'],color)
+    plot_rectangle_array(x,y,h,w,layout_dict['n_rows_rotated'],layout_dict['n_cols_rotated'],color) #注意在这里w和h互换
   
   # plt.show()
 

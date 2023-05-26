@@ -159,169 +159,54 @@ print(cg_agg_cnt)
 
 # MAGIC %md
 # MAGIC #### 3.1 Batching
-# MAGIC Lawrence is working on this part
 
 # COMMAND ----------
 
-### codes added by laoluo
-df_3_required_col = df_3[['dg_id','cg_id','re_qty','overall_label_width','overall_label_length','fix_orientation']]
-df_3_required_col['required_total_area'] = df_3_required_col.apply(lambda x: int(x.re_qty*x.overall_label_width*x.overall_label_length), axis=1)
-display(df_3_required_col)
+# %%time
+# import random
+# sample_num = 200
+# M = min(5,df_3['dg_id'].nunique())  #分组数量上限
+# N = df_3['dg_id'].nunique() #元素数量
+# dg_sorted_list = sorted(df_3['dg_id'].tolist())
+# dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+# n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定分组下限
+# # print(f'n_grp_lower={n_grp_lower}')
 
-# COMMAND ----------
+# batches_list = []
+# v_set_list = []
+# combination_list = []
+# for n in range(N**M): #所有可能的组合的个数为N**M
+#   # print(f' ------ {n} -')
+#   combination = [[] for __ in range(M)] #初始化
+#   for i in range(N):
+#     combination[n // M**i % M].append(i)
 
-dg_req_area_dict = dict(zip(df_3_required_col['dg_id'].tolist(), df_3_required_col['required_total_area'].tolist()))
-dg_cg_dict = dict(zip(df_3_required_col['dg_id'].tolist(), df_3_required_col['cg_id'].tolist()))
-totalAreaSum = sum(dg_req_area_dict.values())
-maxiPossibleGrps = len(dg_req_area_dict) 
-amplf_factor = 1
-numgroups = np.ceil(df_3_required_col['cg_id'].nunique()/n_color_limit) #按照颜色数量决定分组下限
-batches_list = []
-while numgroups <= maxiPossibleGrps:
-  approxiGroupSum = totalAreaSum/numgroups
-  dg_req_area_working = {k: v for k, v in dg_req_area_dict.items()}
-  groups_list = []
-  while len(dg_req_area_working)>0:
-    approxiGroupSum = approxiGroupSum * amplf_factor
-    group_candidate = {}
-    while sum(group_candidate.values())<approxiGroupSum and len(dg_req_area_working)>0:
-      min_key = min(dg_req_area_working, key=dg_req_area_working.get)
-      min_value = dg_req_area_working.get(min_key)
-      group_candidate[min_key] = min_value
-      del dg_req_area_working[min_key]
-    groups_list.append(group_candidate) 
-  numgroups = numgroups + 1  
+#   combination_list.append(combination)
+# combination_list = random.sample(combination_list, sample_num)
+# print(len(combination_list))
 
-  ## 将分组按要求格式输出
-  batch = {}
-  to_append = True
-  for i in range(len(groups_list)):
-    b_key = 'b'+str(i)
-    batch[b_key] = list(groups_list[i].keys()) 
-    ## 检查分组是否满足不同color不操作多少个dg的限制条件
-    color_list = [dg_cg_dict[dg_id] for dg_id in list(groups_list[i].keys())]
-    if len(set(color_list))>n_color_limit:
-      to_append = False
-  if to_append:
-    print(batch)
-    batches_list.append(batch)    
-#print(batches_list)
-
-print('---------------------------------- split boundary ------------------------------------')
-
-numgroups = np.ceil(df_3_required_col['cg_id'].nunique()/n_color_limit) #按照颜色数量决定分组下限
-amplf_factor = 1.5
-while numgroups <= maxiPossibleGrps:
-  approxiGroupSum = totalAreaSum/numgroups
-  dg_req_area_working = {k: v for k, v in dg_req_area_dict.items()}
-  groups_list = []
-  while len(dg_req_area_working)>0:
-    approxiGroupSum = approxiGroupSum * amplf_factor
-    group_candidate = {}
-    pickedSize = 0
-    while sum(group_candidate.values())<approxiGroupSum and len(dg_req_area_working)>0:
-      if pickedSize%2 == 0:
-        min_key = min(dg_req_area_working, key=dg_req_area_working.get)
-        min_value = dg_req_area_working.get(min_key)
-        group_candidate[min_key] = min_value
-        del dg_req_area_working[min_key]
-      else:
-        max_key = max(dg_req_area_working, key=dg_req_area_working.get)
-        max_value = dg_req_area_working.get(max_key)
-        group_candidate[max_key] = max_value
-        del dg_req_area_working[max_key]
-      pickedSize = pickedSize + 1      
-    groups_list.append(group_candidate)
-  numgroups = numgroups + 1  
-
-  ## 将分组按要求格式输出
-  batch = {}
-  to_append = True
-  for i in range(len(groups_list)):
-    b_key = 'b'+str(i)
-    batch[b_key] = list(groups_list[i].keys()) 
-    ## 检查分组是否满足不同color不操作多少个dg的限制条件
-    color_list = [dg_cg_dict[dg_id] for dg_id in list(groups_list[i].keys())]
-    if len(set(color_list))>n_color_limit:
-      to_append = False
-  if to_append:
-    print(batch)
-    batches_list.append(batch)    
-# print(batches_list)
-
-# COMMAND ----------
-
-#  dg_req_area_dict = dict(zip(df_3_required_col['dg_id'].tolist(), df_3_required_col['required_total_area'].tolist()))
-#  totalAreaSum = sum(dg_req_area_dict.values())
-#  maxiPossibleGrps = len(dg_req_area_dict) 
-#  amplf_factor = 1
-#  numgroups = 1
-#  batches_list = []
-#  while numgroups <= maxiPossibleGrps:
-#     approxiGroupSum = totalAreaSum/numgroups
-#     dg_req_area_working = {k: v for k, v in dg_req_area_dict.items()}
-#     groups_list = []
-#     while len(dg_req_area_working)>0:
-#       approxiGroupSum = approxiGroupSum * amplf_factor
-#       group_candidate = {}
-#       while sum(group_candidate.values())<approxiGroupSum and len(dg_req_area_working)>0:
-#         min_key = min(dg_req_area_working, key=dg_req_area_working.get)
-#         min_value = dg_req_area_working.get(min_key)
-#         group_candidate[min_key] = min_value
-#         del dg_req_area_working[min_key]
-#       groups_list.append(group_candidate) 
-#     numgroups = numgroups + 1  
-
-#     ## 检查分组是否满足不同color不操作多少个dg的限制条件
-
-#     ## 将分组按要求格式输出
-#     batch = {}
-#     for i in range(len(groups_list)):
-#       b_key = 'b'+str(i)
-#       batch[b_key] = list(groups_list[i].keys()) 
-#     print(batch)
-#     batches_list.append(batch)    
-#     ## 下一环节的确定sheetsize和各dg的ups
-# #print(batches_list)
-
-# print('---------------------------------- split boundary ------------------------------------')
-
-# numgroups = 1
-# amplf_factor = 1.5
-# while numgroups <= maxiPossibleGrps:
-#   approxiGroupSum = totalAreaSum/numgroups
-#   dg_req_area_working = {k: v for k, v in dg_req_area_dict.items()}
-#   groups_list = []
-#   while len(dg_req_area_working)>0:
-#     approxiGroupSum = approxiGroupSum * amplf_factor
-#     group_candidate = {}
-#     pickedSize = 0
-#     while sum(group_candidate.values())<approxiGroupSum and len(dg_req_area_working)>0:
-#       if pickedSize%2 == 0:
-#         min_key = min(dg_req_area_working, key=dg_req_area_working.get)
-#         min_value = dg_req_area_working.get(min_key)
-#         group_candidate[min_key] = min_value
-#         del dg_req_area_working[min_key]
-#       else:
-#         max_key = max(dg_req_area_working, key=dg_req_area_working.get)
-#         max_value = dg_req_area_working.get(max_key)
-#         group_candidate[max_key] = max_value
-#         del dg_req_area_working[max_key]
-#       pickedSize = pickedSize + 1      
-#     groups_list.append(group_candidate)
-#   numgroups = numgroups + 1  
-
-#   ## 检查分组是否满足不同color不操作多少个dg的限制条件
-
-#   ## 将分组按要求格式输出
-#   batch = {}
-#   for i in range(len(groups_list)):
-#     b_key = 'b'+str(i)
-#     batch[b_key] = list(groups_list[i].keys()) 
-#   print(batch)
-#   batches_list.append(batch)    
-#     ## 下一环节的确定sheetsize和各dg的ups
-# print(batches_list)
+# for combination in combination_list:
+#   batch = []
+#   for c in combination:
+#     if len(c)>0:
+#       sub_batch = [dg_sorted_list[i] for i in c]
+#       batch.append(sub_batch)
+#   # if len(batch)>=n_grp_lower:
+#   if len(batch)==M:    
+#     #去掉颜色数大于limit的sub_batch    
+#     for sub_batch in batch:
+#       colors = [dg_cg_dict[s] for s in sub_batch]
+#       if len(set(colors))<=n_color_limit:
+#         batch_dict = {}
+#         for i in range(len(batch)):
+#           b_key = 'b'+str(i)
+#           batch_dict[b_key] = batch[i]         
+#         v_set = set([str(i) for i in batch_dict.values()])  
+#         if v_set not in v_set_list:
+#           v_set_list.append(v_set)
+#           batches_list.append(batch_dict)
+#           print(batch_dict)
+# print(len(batches_list))
 
 # COMMAND ----------
 
@@ -342,13 +227,11 @@ while numgroups <= maxiPossibleGrps:
 #         'b2':['dg_091','dg_093'],
 #         'b3':['dg_094','dg_095','dg_098','dg_099']}
 
-# batches_list = [
-# {'b0':['dg_01','dg_02','dg_03','dg_04'],
-#  'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],
-#  'b2':['dg_10'],
-#  'b3':['dg_11'],
-#  'b4':['dg_12','dg_13'] } #ppc solution - 0519
-# ]
+batches_list = [
+{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']},
+{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']},
+{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']}
+]
 
 ppc_batch = [
 {'b0':['dg_01','dg_02','dg_03','dg_04'],
@@ -707,7 +590,10 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
-
+# {'b0': ['dg_01', 'dg_02', 'dg_03', 'dg_04'], 'b1': ['dg_05', 'dg_06', 'dg_07', 'dg_08', 'dg_09'], 'b2': ['dg_10'], 'b3': ['dg_11'], 'b4': ['dg_12', 'dg_13']} - 249.5 ppc
+#{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']} - 223
+#{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']} - 211
+# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']} - 234
 
 # COMMAND ----------
 

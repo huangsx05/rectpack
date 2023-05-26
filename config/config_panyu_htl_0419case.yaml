@@ -1,8 +1,5 @@
 #alphabetical order
 
-#input
-input_file: '../input/HTL_input_0519.csv'
-
 #business params
 criteria:  {'one_cg_one_dg':{'678<+>528':{'pds':200, 'internal_date':999999, 'weight':1},
                              '582<+>482':{'pds':200, 'internal_date':999999, 'weight':1},
@@ -22,6 +19,7 @@ criteria:  {'one_cg_one_dg':{'678<+>528':{'pds':200, 'internal_date':999999, 'we
            }
 
 ink_seperator_width: 30
+input_file: '../input/HTL_input_0419.csv'
 
 n_color_limit: {'1_OCOD': 1, 
                 '2_OCMD': 1,
@@ -29,7 +27,6 @@ n_color_limit: {'1_OCOD': 1,
                 '4_MCMD_No_Seperater': 10,
                 } 
 
-#algo params
 OCOD_filter: False
 OCOD_criteria_check: False
 

@@ -4,11 +4,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 
-from utils.load_data import load_config, load_and_clean_data, initialize_dg_level_results, initialize_sku_level_results
+from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_level_df, initialize_dg_level_results, initialize_sku_level_results
 from utils.plot import plot_rectangle, plot_full_height_for_each_dg_with_ink_seperator
 from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
 from utils.tools import get_all_dg_combinations_with_orientation
-from model.ocmd_solver import filter_id_by_criteria_ocmd
+from model.ocmd_solver import only_keep_cg_with_mul_dgs, filter_id_by_criteria_ocmd
 from model.shared_solver import iterate_to_solve_min_total_sheet_area, allocate_sku, split_abc_ups
 
 # COMMAND ----------
@@ -47,16 +47,13 @@ params_dict = {
   'sheet_size_list':sheet_size_list
   }
 
-# for k,v in params_dict.items():
-#   print(f'{k}: {v}')
-
 # COMMAND ----------
 
 #algo inputs
 config_file = f"../config/config_panyu_htl.yaml"
 params_dict = load_config(config_file, params_dict)
-for k,v in params_dict.items():
-  print(f'{k}: {v}')
+# for k,v in params_dict.items():
+#   print(f'{k}: {v}')
 
 # COMMAND ----------
 
@@ -65,24 +62,19 @@ for k,v in params_dict.items():
 
 # COMMAND ----------
 
-input_file = "../input/HTL_input_0419.csv"
-filter_Color_Group = ["CG_22","CG_30"]
+filter_Color_Group = ["CG_09"]
+# filter_Color_Group = [] #空代表不筛选，全部计算
 
 # COMMAND ----------
 
 #sample config
 criteria = params_dict['criteria']
 ink_seperator_width = params_dict['ink_seperator_width']
+input_file = params_dict['input_file']
 n_abc = params_dict['n_abc']
 OCMD_filter = params_dict['OCMD_filter']
 OCMD_criteria_check = params_dict['OCMD_criteria_check']
 OCMD_layout_mode = params_dict['OCMD_layout_mode']
-
-# COMMAND ----------
-
-df = pd.read_csv(input_file)
-df = df[df['Color_Group'].isin(filter_Color_Group)]
-display(df)
 
 # COMMAND ----------
 
@@ -91,47 +83,44 @@ display(df)
 
 # COMMAND ----------
 
-#inputs
-#clean intput data
-df = load_and_clean_data(df)
-display(df)
-
-#aggregation by cg_dg
-#以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
-cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length']
-agg_dict = {'re_qty':'sum'}
-for c in cols_to_first:
-  agg_dict[c] = 'first'
-df_1 = df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
-display(df_1)
+# MAGIC %md
+# MAGIC #### - inputs
 
 # COMMAND ----------
 
-#outputs
-#初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
-df_res = initialize_dg_level_results(df)
-display(df_res)
+df = pd.read_csv(input_file)
+if len(filter_Color_Group)>0:
+  df = df[df['Color_Group'].isin(filter_Color_Group)]
+display(df) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
 
-#初始化结果文件Files_to_ESKO的file-3
-res_file_3 = initialize_sku_level_results(df)
-display(res_file_3)
+# COMMAND ----------
+
+#clean intput data
+df = load_and_clean_data(df)
+display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
+
+# COMMAND ----------
+
+#aggregation by cg_dg 以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
+df_1 = agg_to_get_dg_level_df(df)
+display(df_1) #dg颗粒度的input data
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### 2.0  数据接口
+# MAGIC #### - outputs
 
 # COMMAND ----------
 
-# df_2 = df_1[~df_1['cg_dg_id'].isin(pass_cg_dg_ids_1_2)]
-df_2 = df_1.copy()
-df_2 = df_2[['cg_dg_id']+cols_to_first+['re_qty']]
+#初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
+df_res = initialize_dg_level_results(df)
+display(df_res)
 
-#过滤：只考虑有多行的cg_id，因为单行的应该在OCOD考虑
-df_2_cg_count = df_2.groupby('cg_id')['cg_dg_id'].count().reset_index().sort_values('cg_dg_id', ascending=False)
-multi_dg_cg = df_2_cg_count[df_2_cg_count['cg_dg_id']>1]['cg_id'].values
-df_2 = df_2[df_2['cg_id'].isin(multi_dg_cg)].sort_values(['cg_id', 're_qty'], ascending=[True, False])
-display(df_2)
+# COMMAND ----------
+
+#初始化结果文件Files_to_ESKO的file-3
+res_file_3 = initialize_sku_level_results(df)
+display(res_file_3)
 
 # COMMAND ----------
 
@@ -141,17 +130,16 @@ display(df_2)
 # COMMAND ----------
 
 #前接口
-print(f"candidate_id_list = {df_2['cg_id'].values}")
+df_2 = only_keep_cg_with_mul_dgs(df_1)
+print(f"candidate_id_list = {df_2['cg_id'].unique()}")
+display(df_2)
 
 # COMMAND ----------
 
 id_list_2_1 = [] #所有有可能满足criteria的ids
 
 if OCMD_filter:
-  df_2['label_area'] = df_2['overall_label_width']*df_2['overall_label_length']
-  for cg_id in multi_dg_cg:
-    print('下面的filter function有bug，取的不是pds下限，需要修改')
-    stop_flag = 1/0
+  for cg_id in df_2['cg_id'].unique():
     fail_criteria = filter_id_by_criteria_ocmd(df_2, cg_id, sheet_size_list, criteria['one_cg_mul_dg']) ###### --->>> 
     if fail_criteria == False:
       id_list_2_1.append(cg_id)
@@ -168,7 +156,7 @@ df_2_1 = df_2[df_2['cg_id'].isin(id_list_2_1)]
 if len(df_2_1)>0:
   display(df_2_1)
 else:
-  print('no candidate id to layout')
+  dbutils.notebook.exit('no candidate id to layout')
 
 # COMMAND ----------
 
@@ -227,7 +215,6 @@ for cg_id in cg_id_list_2_2:
                                                                                       check_criteria=OCMD_criteria_check,criteria_dict=criteria['one_cg_mul_dg'],
                                                                                       mode='one_dg_one_column') ###
   elif OCMD_layout_mode=='mul_dg_one_column': #推荐使用，符合PPC要求的互扣式混排
-    ###### TO IMPROVE EFFICIENDY 可以给一个初始解
     best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(sheet_size_list,comb_names,comb_res_w,comb_res_h,dg_id,cg_id,re_qty,ink_seperator_width,
                                                                                       check_criteria=OCMD_criteria_check,criteria_dict=criteria['one_cg_mul_dg'],
                                                                                       mode='mul_dg_one_column') ### mode与上面不同
@@ -260,6 +247,10 @@ print(f'pass_cg_ids_2_2 = {pass_cg_ids_2_2}')
 
 # COMMAND ----------
 
+display(df_2)
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC #### 2.3 Allocate SKU
 
@@ -274,7 +265,6 @@ df_2_3 = df_2_3[cols]
 
 # COMMAND ----------
 
-# to do with n_abc
 if len(pass_cg_ids_2_2)==0:
   df_2_3 = pd.DataFrame()
 else:
@@ -298,42 +288,6 @@ else:
   #step 2: 做ABC版的ups分割（每个版的ups应该相等）split ABC sheets
   for dg_id in ups_2_2_dict.keys():
     df_2_3 = split_abc_ups(sub_id=dg_id, sub_id_colname='dimension_group', df=df_2_3, ups_dict=ups_2_2_dict)
-  #   print(f'------ abc splitting for {dg_id} ------')
-  #   df_2_3_temp = df_2_3[df_2_3['dimension_group']==dg_id].reset_index().drop(columns=['index'])  
-  #   # n = 1 #当前的ups倍数
-  #   cur_set_index = 0
-  #   # sum_pds = 0
-  #   for i in range(len(df_2_3_temp)): #对每一个sku
-  #     cur_ups_thres = (cur_set_index+1)*ups_2_2_dict[dg_id]
-  #     sku_id = df_2_3_temp.loc[i,'sku_id']
-  #     set_name = sets[cur_set_index]
-  #     # print(cur_set_index, set_name)      
-  #     # print(df_2_3_temp['cum_sum_ups'].values.tolist())      
-  #     # print(df_2_3_temp.loc[i,'cum_sum_ups'],cur_ups_thres)
-  #     if df_2_3_temp.loc[i,'cum_sum_ups']<=cur_ups_thres: #无需换版
-  #       df_2_3.loc[df_2_3['sku_id']==sku_id, set_name] = df_2_3['sku_ups']
-  #     else: #换到下一个版，当前sku需要分配到两个不同的版
-  #       # sum_pds += df_2_3_temp.loc[i,'sku_pds']
-  #       if i==0:
-  #         pre_sku_ups = cur_ups_thres
-  #       else:
-  #         pre_sku_ups = cur_ups_thres - df_2_3_temp.loc[i-1,'cum_sum_ups']          
-  #       df_2_3.loc[df_2_3['sku_id']==sku_id, set_name] = pre_sku_ups #pre sheet
-  #       next_sku_ups = df_2_3_temp.loc[i,'sku_ups'] - pre_sku_ups
-  #       # n += 1
-  #       cur_set_index += 1  
-  #       set_name = sets[cur_set_index]
-  #       # print(cur_set_index, set_name)   
-  #       df_2_3.loc[df_2_3['sku_id']==sku_id, set_name] = next_sku_ups #next_sheet       
-  #   # sum_pds += df_2_3_temp['sku_pds'].values[-1]
-
-  #   for set_name in sets:
-  #     if set_name in df_2_3.columns:
-  #       df_2_3.fillna(0,inplace=True)
-  #       df_2_3_temp = df_2_3[df_2_3['dimension_group']==dg_id]
-  #       print(f'sum_ups for {set_name} = {np.sum(df_2_3_temp[set_name])}') #确认每个set的ups相等
-  
-  # df_2_3 = df_2_3.sort_values(['dimension_group','sku_pds'])    
 
 # COMMAND ----------
 
@@ -354,48 +308,11 @@ for k,v in best_batch.items():
 
 # COMMAND ----------
 
-best_batch['batch_ocmd<+>cg_22']['best_res']['ups_info_by_col']
-
-# COMMAND ----------
-
 #plot上面的最优解
 for sub_batch_id in best_batch.keys():
   best_sheet = res[sub_batch_id]['best_sheet']
   best_comb = res[sub_batch_id]['best_comb']
-  ups_res_list = res[sub_batch_id]['best_res']['ups_info_by_col']
-  # dg_id = [i[:-2] for i in best_comb.split('<+>')]
-  # dg_orient = [i[-1] for i in best_comb.split('<+>')]
-  # cg_id = []
-  # label_w_list  =[]
-  # label_h_list = []
-  # for i in range(len(dg_id)):
-  #   dg = dg_id[i]
-  #   orient = dg_orient[i]
-  #   label_w = df_2_1.loc[df_2_1['dimension_group']==dg, 'overall_label_width'].values[0]
-  #   label_h = df_2_1.loc[df_2_1['dimension_group']==dg, 'overall_label_length'].values[0]
-  #   cg_id.append(df_2_1.loc[df_2_1['dimension_group']==dg, 'cg_id'].values[0])
-  #   if orient=='w':
-  #     label_w_list.append(label_w)
-  #     label_h_list.append(label_h)
-  #   else:
-  #     label_w_list.append(label_h)
-  #     label_h_list.append(label_w)        
-  # ups_list = list(res[sub_batch_id]['best_res']['ups'])
-  # pds_list = list(res[sub_batch_id]['best_res']['pds'])
-  # re_qty = list(res[sub_batch_id]['best_res']['re_qty'])  
-  # if len(dg_id)==1:
-  #   n_cols = list([res[sub_batch_id]['best_res']['n_cols']])
-  # else:
-  #   n_cols = list(res[sub_batch_id]['best_res']['n_cols'])
-  # # print(best_sheet, ink_seperator_width, dg_id, cg_id, label_w_list, label_h_list, n_cols, ups_list)
-  # left_sheet_width = best_sheet[0]-(len(set(cg_id))-1)*ink_seperator_width-np.sum(np.multiply(label_w_list, n_cols))
-  # print(f'label_w_list = {label_w_list}')  
-  # print(f'label_h_list = {label_h_list}')    
-  # print(f'n_cols = {n_cols}')
-  # print(f're_qty = {re_qty}')     
-  # print(f'ups_list = {ups_list}')      
-  # print(f'pds_list = {pds_list}')    
-  # print(f'left_sheet_width = {left_sheet_width}')      
+  ups_res_list = res[sub_batch_id]['best_res']['ups_info_by_col']    
 
   scale = 100
   plt.figure(figsize=(best_sheet[0]/scale, best_sheet[1]/scale))
@@ -407,16 +324,14 @@ for sub_batch_id in best_batch.keys():
 
 # COMMAND ----------
 
-to do
 #DG level results - 更新结果和PPC比较的结果df_res，同时也是Files_to_ESKO的file-1
-df_res = prepare_dg_level_results(df_res, df_1_2, df_1_5, pass_cg_dg_ids_1_2)
+df_res = prepare_dg_level_results(df_res, df_2, df_2_3, pass_cg_ids_2_2)
 display(df_res)
 
 # COMMAND ----------
 
-to do
 #sku level results - 更新结果文件Files_to_ESKO的file-3
-res_file_3 = prepare_sku_level_results(res_file_3, df_1_5)
+res_file_3 = prepare_sku_level_results(res_file_3, df_2_3)
 display(res_file_3)
 
 # COMMAND ----------
