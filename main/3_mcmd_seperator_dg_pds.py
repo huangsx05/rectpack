@@ -207,7 +207,7 @@ for i in range(len(batches_dict)):
   res_detail_3_2[batch_name] = {}
   batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
   print()
-  print(f'$$$$$$ calculating batch = {batch} $$$$$$')
+  print(f'$$$$$$ {i}/{len(batches_dict)} calculating batch = {batch} $$$$$$')
 
   #revert字典，将batch号加入df_3
   batch_revert = {}

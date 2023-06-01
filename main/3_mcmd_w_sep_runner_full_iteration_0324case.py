@@ -49,8 +49,6 @@ if batching_type!='4_MCMD_No_Seperater':
 else:
   add_pds_per_sheet = int((n_color+2)*3.5)
 
-  
-
 params_dict = {
   'batching_type':batching_type,
   'n_abc':n_abc,
@@ -164,51 +162,51 @@ print(cg_agg_cnt)
 
 # COMMAND ----------
 
-# %%time
-# import random
-# sample_num = 50000
-# M = min(5,df_3['dg_id'].nunique())  #分组数量上限
-# N = df_3['dg_id'].nunique() #元素数量
-# dg_sorted_list = sorted(df_3['dg_id'].tolist())
-# dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
-# n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定分组下限
-# # print(f'n_grp_lower={n_grp_lower}')
-
-# batches_list = []
-# v_set_list = []
-# combination_list = []
-# for n in range(N**M): #所有可能的组合的个数为N**M
-#   # print(f' ------ {n} -')
-#   combination = [[] for __ in range(M)] #初始化
-#   for i in range(N):
-#     combination[n // M**i % M].append(i)
-
-#   combination_list.append(combination)
-# combination_list = random.sample(combination_list, sample_num)
-# print(len(combination_list))
-
-# for combination in combination_list:
-#   batch = []
-#   for c in combination:
-#     if len(c)>0:
-#       sub_batch = [dg_sorted_list[i] for i in c]
-#       batch.append(sub_batch)
-#   # if len(batch)>=n_grp_lower:
-#   if len(batch)>=2:    
-#     #去掉颜色数大于limit的sub_batch    
-#     for sub_batch in batch:
-#       colors = [dg_cg_dict[s] for s in sub_batch]
-#       if len(set(colors))<=n_color_limit:
-#         batch_dict = {}
-#         for i in range(len(batch)):
-#           b_key = 'b'+str(i)
-#           batch_dict[b_key] = batch[i]         
-#         v_set = set([str(i) for i in batch_dict.values()])  
-#         if v_set not in v_set_list:
-#           v_set_list.append(v_set)
-#           batches_list.append(batch_dict)
-#           print(batch_dict)
-# print(len(batches_list))
+# MAGIC %%time
+# MAGIC import random
+# MAGIC sample_num = 100000
+# MAGIC M = min(5,df_3['dg_id'].nunique())  #分组数量上限
+# MAGIC N = df_3['dg_id'].nunique() #元素数量
+# MAGIC dg_sorted_list = sorted(df_3['dg_id'].tolist())
+# MAGIC dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+# MAGIC n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定分组下限
+# MAGIC # print(f'n_grp_lower={n_grp_lower}')
+# MAGIC
+# MAGIC batches_list = []
+# MAGIC v_set_list = []
+# MAGIC combination_list = []
+# MAGIC for n in range(N**M): #所有可能的组合的个数为N**M
+# MAGIC   # print(f' ------ {n} -')
+# MAGIC   combination = [[] for __ in range(M)] #初始化
+# MAGIC   for i in range(N):
+# MAGIC     combination[n // M**i % M].append(i)
+# MAGIC
+# MAGIC   combination_list.append(combination)
+# MAGIC combination_list = random.sample(combination_list, sample_num)
+# MAGIC print(len(combination_list))
+# MAGIC
+# MAGIC for combination in combination_list:
+# MAGIC   batch = []
+# MAGIC   for c in combination:
+# MAGIC     if len(c)>0:
+# MAGIC       sub_batch = [dg_sorted_list[i] for i in c]
+# MAGIC       batch.append(sub_batch)
+# MAGIC   # if len(batch)>=n_grp_lower:
+# MAGIC   if len(batch)>=2:    
+# MAGIC     #去掉颜色数大于limit的sub_batch    
+# MAGIC     for sub_batch in batch:
+# MAGIC       colors = [dg_cg_dict[s] for s in sub_batch]
+# MAGIC       if len(set(colors))<=n_color_limit:
+# MAGIC         batch_dict = {}
+# MAGIC         for i in range(len(batch)):
+# MAGIC           b_key = 'b'+str(i)
+# MAGIC           batch_dict[b_key] = batch[i]         
+# MAGIC         v_set = set([str(i) for i in batch_dict.values()])  
+# MAGIC         if v_set not in v_set_list:
+# MAGIC           v_set_list.append(v_set)
+# MAGIC           batches_list.append(batch_dict)
+# MAGIC           print(batch_dict)
+# MAGIC print(len(batches_list))
 
 # COMMAND ----------
 
@@ -229,13 +227,15 @@ print(cg_agg_cnt)
 #         'b2':['dg_091','dg_093'],
 #         'b3':['dg_094','dg_095','dg_098','dg_099']}
 
-batches_list = [
-# {'b0': ['dg_087', 'dg_094', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086', 'dg_093'], 'b2': ['dg_088', 'dg_091']},
-# {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_088', 'dg_091'], 'b3': ['dg_084', 'dg_086', 'dg_093']},
-{'b0': ['dg_094', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_095'], 'b2': ['dg_086', 'dg_093'], 'b3': ['dg_084'], 'b4': ['dg_088', 'dg_091']}
-]
+# batches_list = [
+# # {'b0': ['dg_087', 'dg_094', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086', 'dg_093'], 'b2': ['dg_088', 'dg_091']},
+# # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_088', 'dg_091'], 'b3': ['dg_084', 'dg_086', 'dg_093']},
+# {'b0': ['dg_094', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_095'], 'b2': ['dg_086', 'dg_093'], 'b3': ['dg_084'], 'b4': ['dg_088', 'dg_091']}
+# ]
 
 ppc_batch = [
+{'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_087'], 'b2': ['dg_088', 'dg_093'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
+{'b0': ['dg_087', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_093'], 'b2': ['dg_088'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
 {'b0':['dg_084','dg_086'],
  'b1':['dg_087','dg_088'],
  'b2':['dg_091','dg_093'],
@@ -378,7 +378,7 @@ for i in range(len(batches_dict)):
     sheet = v['best_sheet']
     sheet_name = str(int(sheet[0]))+'<+>'+str(int(sheet[1]))
     sheet_weight = criteria['mul_cg_mul_dg'][sheet_name]['weight']
-    metric += v['batch_the_pds']*sheet_weight
+    metric += v['max_pds']*sheet_weight
   #再考虑版数和pds之间的权衡
   add_metric = len(res_batch)*add_pds_per_sheet
   metric += add_metric
