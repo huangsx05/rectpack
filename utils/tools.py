@@ -1,5 +1,18 @@
 import numpy as np
 
+
+def add_sub_batch_id_to_df(df_3_3, batch):
+  #revert字典，将batch号加入df_3_3
+  batch_revert = {}
+  for k,v in batch.items():
+    for i in v:
+      batch_revert[i] = k
+  df_3_3 = df_3_3[df_3_3['dimension_group'].isin(batch_revert.keys())]
+  df_3_3['sub_batch_id'] = df_3_3['dimension_group'].apply(lambda x: batch_revert[x])
+  df_3_3 = df_3_3.sort_values(['sub_batch_id','dimension_group','sku_id','re_qty'])
+  return df_3_3
+
+
 def allocate_cols_based_on_qty(tot_n_cols, qty_list):
   tot_qty = np.sum(qty_list)
   n_cols = [np.max([round(qty/tot_qty*tot_n_cols),1]) for qty in qty_list] #每个dg的初始列数, 并保证至少有一列

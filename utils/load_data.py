@@ -2,11 +2,17 @@ import pandas as pd
 import yaml
 
 
-def load_config(config_file, params_dict):
+def load_config(config_file, params_dict={}):
   with open(config_file) as fh:
       config = yaml.load(fh, Loader=yaml.FullLoader)
   params_dict.update(config)
   return params_dict
+
+
+# 写入YAML文件的方法
+def write_config(config_file, params_dict):
+    with open(config_file, encoding="utf-8", mode="w") as f:
+        yaml.dump(params_dict, stream=f, allow_unicode=True)
 
 
 def load_and_clean_data(df, input_file=None):
@@ -78,6 +84,20 @@ def agg_to_get_dg_level_df(sku_level_df):
   dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
   return dg_level_df
 
+
+def initialize_input_data(input_file, filter_Color_Group):
+  """
+  :return:
+    df_raw: input data before data cleaning;
+    df: input data after data cleaning;    
+    df_1: aggregated input data at dg level.      
+  """
+  df_raw = pd.read_csv(input_file)
+  if len(filter_Color_Group)>0:
+    df_raw = df_raw[df_raw['Color_Group'].isin(filter_Color_Group)]  
+  df = load_and_clean_data(df_raw)
+  df_1 = agg_to_get_dg_level_df(df)
+  return df_raw, df, df_1
 
 
 def initialize_dg_level_results(df):

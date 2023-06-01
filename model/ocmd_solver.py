@@ -182,7 +182,7 @@ def iterate_to_get_best_ups_list_allocation(sheet_size,dg_id,re_qty,label_w_list
   return best_ups_list, best_pds_list, best_ups_layout
 
 
-def get_ups_layout_for_ocmd_comb_on_one_sheetsize(dg_id,label_w_list,label_h_list,re_qty,sheet_size):
+def get_ups_layout_for_ocmd_comb_on_one_sheetsize(dg_id,label_w_list,label_h_list,re_qty,sheet_size,layout_tolerance):
   """
   #对一个sheet_size遍历不同dg ups的组合情况，找到最优ups组合
   用于ocmd, 一列中不同dg混排
@@ -223,7 +223,7 @@ def get_ups_layout_for_ocmd_comb_on_one_sheetsize(dg_id,label_w_list,label_h_lis
   n_ups = np.multiply(n_rows, n_cols)
   # print(f'n_ups heuristics final solution = {n_ups}')  
 
-  tolerance = 2 #hardcode tolerance for n_col
+  tolerance = layout_tolerance
   # n_cols_upper_lim = n_cols
   n_cols_search_upper = [int(i+tolerance) for i in n_cols]
   n_cols_search_lower = [int(np.max([i-tolerance,0])) for i in n_cols] #因为考虑互扣，所以允许下限为0

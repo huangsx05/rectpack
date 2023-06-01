@@ -1,38 +1,72 @@
-#alphabetical order
+1_OCOD: {
+  'input_file': '../input/HTL_input_0519.csv',
+  'filter_Color_Group': [], #空代表不筛选，全部计算
+  # filter_Color_Group = [# "CG_04",# "CG_05",# "CG_06",# "CG_07"]
 
-#input
-input_file: '../input/HTL_input_0519.csv'
+  'business_params': {'criteria': {'678<+>528': {'pds': 200, 'internal_date': 5, 'weight': 1},
+                                   '582<+>482': {'pds': 200, 'internal_date': 5, 'weight': 1}, 
+                                   '522<+>328': {'pds': 200, 'internal_date': 5, 'weight': 0.5},
+                                   },
+                      'n_color_limit': 1                        
+                      },  
+  'algo_params': {'criteria_filter': False,
+                  'criteria_check': False, 
+                  },                 
+  }
 
-#business params
-criteria:  {'one_cg_one_dg':{'678<+>528':{'pds':200, 'internal_date':999999, 'weight':1},
-                             '582<+>482':{'pds':200, 'internal_date':999999, 'weight':1},
-                             '522<+>328':{'pds':200, 'internal_date':999999, 'weight':0.5},
-                             }, 
-            'one_cg_mul_dg':{'678<+>528':{'pds':200, 'internal_date':5, 'weight':1},
-                            #  '678<+>528':{'pds':0, 'internal_date':5, 'weight':1}, ###### temp for test
-                             '582<+>482':{'pds':200, 'internal_date':5, 'weight':1},
-                            #  '582<+>482':{'pds':0, 'internal_date':5, 'weight':1}, ###### temp for test                             
-                             '522<+>328':{'pds':200, 'internal_date':5, 'weight':0.5},
-                             },
-            'mul_cg_mul_dg':{'678<+>528':{'pds':80, 'internal_date':3, 'weight':1},
-                              # '678<+>528':{'pds':0, 'internal_date':3, 'weight':1}, ###### temp for test
-                             '582<+>482':{'pds':80, 'internal_date':3, 'weight':1},
-                             '522<+>328':{'pds':100, 'internal_date':3, 'weight':0.5},
-                             },
-           }
 
-ink_seperator_width: 30
+2_OCMD: {
+  'input_file': '../input/HTL_input_0519.csv',
+  'filter_Color_Group': [], #空代表不筛选，全部计算
+  # filter_Color_Group = [# "CG_04",# "CG_05",# "CG_06",# "CG_07"]
 
-n_color_limit: {'1_OCOD': 1, 
-                '2_OCMD': 1,
-                '3_MCMD_Seperater': 5,
-                '4_MCMD_No_Seperater': 10,
-                } 
+  'business_params': {'criteria': {'678<+>528': {'pds': 200, 'internal_date': 5, 'weight': 1},
+                                   '582<+>482': {'pds': 200, 'internal_date': 5, 'weight': 1}, 
+                                   '522<+>328': {'pds': 200, 'internal_date': 5, 'weight': 0.5},
+                                   },
+                      'n_color_limit': 1                        
+                      },  
+  'algo_params': {'criteria_filter': False,
+                  'criteria_check': False, 
+                  'layout_mode': 'mul_dg_one_column', #目前只支持这个
+                  'layout_tolerance': 2,                  
+                  },                 
+  }
 
-#algo params
-OCOD_filter: False
-OCOD_criteria_check: False
 
-OCMD_filter: False
-OCMD_criteria_check: False
-OCMD_layout_mode: 'mul_dg_one_column' #'one_dg_one_column', 'mul_dg_one_column'
+3_MCMD_Seperater: {
+  'input_file': '../input/HTL_input_0519.csv',
+  'filter_Color_Group': [], #空代表不筛选，全部计算
+  # filter_Color_Group = [# "CG_04",# "CG_05",# "CG_06",# "CG_07"]
+
+  'business_params': {'criteria': {'678<+>528': {'pds': 80, 'internal_date': 3, 'weight': 1},
+                                   '582<+>482': {'pds': 80, 'internal_date': 3, 'weight': 1}, 
+                                   '522<+>328': {'pds': 100, 'internal_date': 3, 'weight': 0.5},
+                                   },
+                      'ink_seperator_width': 30,                                   
+                      'n_color_limit': 5,                        
+                      },  
+  'algo_params': {'sample_batch': True,
+                  'sample_batch_num': 10,  #取样的batch数量
+                  'upper_sub_batch_num': 5, #sub_batch数量的上限
+                  'lower_sub_batch_num': 4, #sub_batch数量的下限
+                  'layout_mode': 'one_dg_one_column', #目前只支持这个
+                  'layout_tolerance': 1,
+                  },                 
+  }
+
+
+4_MCMD_No_Seperater: {
+  'input_file': '../input/HTL_input_0519.csv',
+  'filter_Color_Group': [], #空代表不筛选，全部计算
+  # filter_Color_Group = [# "CG_04",# "CG_05",# "CG_06",# "CG_07"]
+
+  'business_params': {'criteria': {'678<+>528': {'pds': 80, 'internal_date': 3, 'weight': 1},
+                                   '582<+>482': {'pds': 80, 'internal_date': 3, 'weight': 1}, 
+                                   '522<+>328': {'pds': 100, 'internal_date': 3, 'weight': 0.5},
+                                   },
+                      'ink_seperator_width': 30,                                   
+                      'n_color_limit': 10,                        
+                      },  
+  'algo_params': {},                 
+  }

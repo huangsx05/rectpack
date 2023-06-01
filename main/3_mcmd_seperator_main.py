@@ -1,98 +1,4 @@
 # Databricks notebook source
-import numpy as np
-import pandas as pd
-import random
-import matplotlib.pyplot as plt
-from datetime import timedelta, datetime
-
-from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_level_df, initialize_dg_level_results, initialize_sku_level_results
-from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
-# from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
-from utils.tools import get_all_dg_combinations_with_orientation
-from model.shared_solver import iterate_to_solve_min_total_sheet_area, allocate_sku, split_abc_ups
-
-# COMMAND ----------
-
-start_time = datetime.now()
-print(start_time)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Part 0: Common Initial Session
-
-# COMMAND ----------
-
-# UI Inputs
-dbutils.widgets.dropdown("Request Type", '1_Batching_Proposal', ['1_Batching_Proposal', '2_Direct-Layout'])
-request_type = dbutils.widgets.get("Request Type")
-
-dbutils.widgets.dropdown("Batching Type", '1_OCOD', ['1_OCOD', '2_OCMD', '3_MCMD_Seperater', '4_MCMD_No_Seperater'])
-batching_type = dbutils.widgets.get("Batching Type")
-
-dbutils.widgets.text("ABC Plates", "1", "ABC Plates")
-n_abc = dbutils.widgets.get("ABC Plates")
-
-dbutils.widgets.text("Films", "678x528, 582x482, 522x328", "Films")
-sheet_size_list = dbutils.widgets.get("Films")
-
-dbutils.widgets.text("Colors", '1', "Colors")
-n_color = dbutils.widgets.get("Colors")
-
-n_abc = int(n_abc)
-
-sheet_size_list = sheet_size_list.split(', ') #678x528, 582x482, 522x328
-sheet_size_list = [sorted([int(i.split('x')[0]), int(i.split('x')[1])],reverse=True) for i in sheet_size_list]
-
-n_color = int(n_color)
-if batching_type!='4_MCMD_No_Seperater':
-  add_pds_per_sheet = int((n_color+1)*3.5)
-else:
-  add_pds_per_sheet = int((n_color+2)*3.5)
-
-params_dict = {
-  'add_pds_per_sheet'add_pds_per_sheet,
-  'batching_type':batching_type,
-  'n_abc':n_abc,
-  'n_color':n_color,  
-  'request_type':request_type,
-  'sheet_size_list':sheet_size_list,
-  }
-
-# COMMAND ----------
-
-#algo inputs
-config_file = f"../config/config_panyu_htl.yaml"
-params_dict = load_config(config_file, params_dict)
-for k,v in params_dict.items():
-  print(f'{k}: {v}')
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Part 1: specific test data and params
-
-# COMMAND ----------
-
-# filter_Color_Group = [# "CG_04",# "CG_05",# "CG_06",# "CG_07"]
-filter_Color_Group = [] #空代表不筛选，全部计算
-
-# COMMAND ----------
-
-#sample config
-criteria = params_dict['criteria']
-input_file = params_dict['input_file']
-ink_seperator_width = params_dict['ink_seperator_width']
-n_abc = params_dict['n_abc']
-n_color_limit = params_dict['n_color_limit'][batching_type]
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Main
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC 需要决策怎么组合，且每种组合怎么选sheet_size；  
 # MAGIC 多颜色会产生中离；  
@@ -104,43 +10,77 @@ n_color_limit = params_dict['n_color_limit'][batching_type]
 
 # COMMAND ----------
 
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+from datetime import timedelta, datetime
+
+from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_level_df, initialize_input_data, initialize_dg_level_results, initialize_sku_level_results
+from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
+# from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
+from utils.tools import add_sub_batch_id_to_df, get_all_dg_combinations_with_orientation
+from model.shared_solver import iterate_to_solve_min_total_sheet_area
+from model.mcmd_solver import *
+
+# COMMAND ----------
+
+start_time = datetime.now()
+print(start_time)
+
+# COMMAND ----------
+
 # MAGIC %md
-# MAGIC #### - inputs
+# MAGIC #### config
 
 # COMMAND ----------
 
-df = pd.read_csv(input_file)
-if len(filter_Color_Group)>0:
-  df = df[df['Color_Group'].isin(filter_Color_Group)]
-display(df) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
+dbutils.widgets.text("config_filename", 'config_panyu_htl.yaml')
+config_filename = dbutils.widgets.get("config_filename")
+print(config_filename)
 
 # COMMAND ----------
 
-#clean intput data
-df = load_and_clean_data(df)
+params_dict = load_config('/tmp/'+config_filename)
+for k,v in params_dict.items():
+  print(f'{k}: {v}')
+
+# COMMAND ----------
+
+filter_Color_Group = params_dict['filter_Color_Group']
+input_file = params_dict['input_file']
+
+add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+batching_type = params_dict['user_params']['batching_type']
+n_abc = params_dict['user_params']['n_abc']
+sheet_size_list = params_dict['user_params']['sheet_size_list']
+
+criteria = params_dict['business_params'][batching_type]['criteria']
+ink_seperator_width = params_dict['business_params'][batching_type]['ink_seperator_width']
+n_color_limit = params_dict['business_params'][batching_type]['n_color_limit']
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Main
+
+# COMMAND ----------
+
+#inputs
+df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group)
+print(f"input data before data cleaning:")
+display(df_raw) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
+print(f"input data after data cleaning:")
 display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
+print(f"aggregated input data at dg level:")
+display(df_1) #dg颗粒度的input data #aggregation by cg_dg 以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
 
 # COMMAND ----------
 
-#aggregation by cg_dg 以cg_dg_id分组，其实应该以dg_id分组就可以，也就是说dg_id是cg_id的下一级
-df_1 = agg_to_get_dg_level_df(df)
-display(df_1) #dg颗粒度的input data
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC #### - outputs
-
-# COMMAND ----------
-
-#初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
-df_res = initialize_dg_level_results(df)
+#outputs
+df_res = initialize_dg_level_results(df) #初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
 display(df_res)
-
-# COMMAND ----------
-
-#初始化结果文件Files_to_ESKO的file-3
-res_file_3 = initialize_sku_level_results(df)
+res_file_3 = initialize_sku_level_results(df) #初始化结果文件Files_to_ESKO的file-3
 display(res_file_3)
 
 # COMMAND ----------
@@ -164,61 +104,62 @@ print(cg_agg_cnt)
 
 # COMMAND ----------
 
-sample_batch = params_dict[batching_type]['sample_batch']
-sample_batch_num = params_dict[batching_type]['sample_batch_num']
-upper_sub_batch_num = params_dict[batching_type]['upper_sub_batch_num'] #考虑做成动态调整
-lower_sub_batch_num = params_dict[batching_type]['lower_sub_batch_num'] #考虑做成动态调整
+sample_batch = params_dict['algo_params'][batching_type]['sample_batch']
+sample_batch_num = params_dict['algo_params'][batching_type]['sample_batch_num']
+upper_sub_batch_num = params_dict['algo_params'][batching_type]['upper_sub_batch_num'] #考虑做成动态调整
+lower_sub_batch_num = params_dict['algo_params'][batching_type]['lower_sub_batch_num'] #考虑做成动态调整
+print(sample_batch, sample_batch_num, upper_sub_batch_num, lower_sub_batch_num)
 
 # COMMAND ----------
 
-M = min(upper_sub_batch_num,df_3['dg_id'].nunique())  #分组数量上限
-N = df_3['dg_id'].nunique() #元素数量
-dg_sorted_list = sorted(df_3['dg_id'].tolist())
-dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
-n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定分组下限
-# print(f'n_grp_lower={n_grp_lower}')
+# M = min(upper_sub_batch_num,df_3['dg_id'].nunique())  #分组数量上限
+# N = df_3['dg_id'].nunique() #元素数量
+# dg_sorted_list = sorted(df_3['dg_id'].tolist())
+# dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+# n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定分组下限
+# # print(f'n_grp_lower={n_grp_lower}')
 
-batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
-v_set_list = []   #for去重
-combination_list = [] #存储candidate batches(过滤batches之前)，存放的是index集合
-#generate all possible combinations
-for n in range(N**M): #所有可能的组合的个数为N**M
-  # print(f' ------ {n} -')
-  combination = [[] for __ in range(M)] #初始化
-  for i in range(N):
-    combination[n // M**i % M].append(i)
-  combination_list.append(combination)
-print(f"all possible combination # = {len(combination_list)}")  
+# batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
+# v_set_list = []   #for去重
+# combination_list = [] #存储candidate batches(过滤batches之前)，存放的是index集合
+# #generate all possible combinations
+# for n in range(N**M): #所有可能的组合的个数为N**M
+#   # print(f' ------ {n} -')
+#   combination = [[] for __ in range(M)] #初始化
+#   for i in range(N):
+#     combination[n // M**i % M].append(i)
+#   combination_list.append(combination)
+# print(f"all possible combination # = {len(combination_list)}")  
 
-#sampling - 这里怎么sample是一个可以改进的点，比如分层取样等
-if sample_batch:
-  combination_list = random.sample(combination_list, sample_batch_num)
-  print(f"after sampling combination # = {len(combination_list)}")
+# #sampling - 这里怎么sample是一个可以改进的点，比如分层取样等
+# if sample_batch:
+#   combination_list = random.sample(combination_list, sample_batch_num)
+#   print(f"after sampling combination # = {len(combination_list)}")
 
-#filter out unqualified batches
-for combination in combination_list:
-  #将index变成dg_id
-  batch = []
-  for c in combination:
-    if len(c)>0:
-      sub_batch = [dg_sorted_list[i] for i in c]
-      batch.append(sub_batch)
-  if len(batch)>=max(n_grp_lower,lower_sub_batch_num):
-  # if len(batch)==M:    
-    #去掉颜色数大于limit的sub_batch    
-    for sub_batch in batch:
-      colors = [dg_cg_dict[s] for s in sub_batch]
-      if len(set(colors))<=n_color_limit:
-        batch_dict = {}
-        for i in range(len(batch)):
-          b_key = 'b'+str(i)
-          batch_dict[b_key] = batch[i]         
-        v_set = set([str(i) for i in batch_dict.values()])  
-        if v_set not in v_set_list:
-          v_set_list.append(v_set)
-          batches_list.append(batch_dict)
-          print(batch_dict)
-print(f"after filtering combination # = {len(batches_list)}")
+# #filter out unqualified batches
+# for combination in combination_list:
+#   #将index变成dg_id
+#   batch = []
+#   for c in combination:
+#     if len(c)>0:
+#       sub_batch = [dg_sorted_list[i] for i in c]
+#       batch.append(sub_batch)
+#   if len(batch)>=max(n_grp_lower,lower_sub_batch_num):
+#   # if len(batch)==M:    
+#     #去掉颜色数大于limit的sub_batch    
+#     for sub_batch in batch:
+#       colors = [dg_cg_dict[s] for s in sub_batch]
+#       if len(set(colors))<=n_color_limit:
+#         batch_dict = {}
+#         for i in range(len(batch)):
+#           b_key = 'b'+str(i)
+#           batch_dict[b_key] = batch[i]         
+#         v_set = set([str(i) for i in batch_dict.values()])  
+#         if v_set not in v_set_list:
+#           v_set_list.append(v_set)
+#           batches_list.append(batch_dict)
+#           print(batch_dict)
+# print(f"after filtering combination # = {len(batches_list)}")
 
 # COMMAND ----------
 
@@ -239,11 +180,11 @@ print(f"after filtering combination # = {len(batches_list)}")
 #         'b2':['dg_091','dg_093'],
 #         'b3':['dg_094','dg_095','dg_098','dg_099']}
 
-# batches_list = [
+batches_list = [
 # {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']},
-# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']},
+{'b0': ['dg_01'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13']},
 # {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']}
-# ]
+]
 
 # ppc_batch = [
 # {'b0':['dg_01','dg_02','dg_03','dg_04'],
@@ -308,8 +249,14 @@ for k in batches_dict.keys():
 
 # COMMAND ----------
 
-layout_mode = params_dict[batching_type]['layout_mode']
-layout_tolerance = params_dict[batching_type]['layout_tolerance']
+layout_mode = params_dict['algo_params'][batching_type]['layout_mode']
+layout_tolerance = params_dict['algo_params'][batching_type]['layout_tolerance']
+print(layout_mode, layout_tolerance)
+
+# COMMAND ----------
+
+df_3_sku = df[['dimension_group','sku_id','re_qty']]
+df_3_sku = df_3_sku.sort_values(list(df_3_sku.columns))
 
 # COMMAND ----------
 
@@ -336,6 +283,9 @@ for i in range(len(batches_dict)):
   df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
   # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
 
+  #将batch号写入df_3_sku
+  df_3_3 = add_sub_batch_id_to_df(df_3_sku, batch)
+
   #遍历dg rotation和sheet size
   #对每一个batch，找到最优解- 中离
   for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
@@ -344,6 +294,7 @@ for i in range(len(batches_dict)):
     #准备数据
     df_i = df_3[df_3['batch_id']==batch_id]
     df_i = df_i.sort_values(['cg_id', 'dg_id'])
+    df_3_3_i = df_3_3[df_3_3['sub_batch_id']==batch_id]
     # display(df_i)
     cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
     if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了 - 但是n_color超过limit的应该已经被过滤了
@@ -367,10 +318,12 @@ for i in range(len(batches_dict)):
     # print(f'comb_res_h = {comb_res_h}')  #check w和h的对应关系
 
     #遍历所有comb和sheet_size，选择总耗材面积最小的comb+sheet_size的组合
-    best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(sheet_size_list,comb_names,comb_res_w,comb_res_h,dg_id,cg_id,re_qty,ink_seperator_width,
-                                                                                    check_criteria=False,criteria_dict=criteria[batching_type],
+    best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(df_3_3_i, n_abc,
+                                             sheet_size_list,comb_names,comb_res_w,comb_res_h,dg_id,cg_id,re_qty,ink_seperator_width,
+                                                                                    check_criteria=False,criteria_dict=criteria,
                                                                                     mode=layout_mode,layout_tolerance=layout_tolerance) ###
     print(f'****** best_comb={best_comb}, best_sheet={best_sheet}, best_res={res}, min_tot_area={min_tot_area}')  
+    # print(f'****** max_sku_pds={max_sku_pds}')      
 
     #结果添加至res_3_2字典
     max_pds = np.max(res['pds'])
@@ -392,7 +345,7 @@ for i in range(len(batches_dict)):
     #考虑pds和sheet_weight
     sheet = v['best_sheet']
     sheet_name = str(int(sheet[0]))+'<+>'+str(int(sheet[1]))
-    sheet_weight = criteria['mul_cg_mul_dg'][sheet_name]['weight']
+    sheet_weight = criteria[sheet_name]['weight']
     metric += v['batch_the_pds']*sheet_weight
   #再考虑版数和pds之间的权衡
   add_metric = len(res_batch)*add_pds_per_sheet
@@ -525,7 +478,7 @@ for sub_batch_id in best_batch.keys(): #for b0, b1, ...
     n_ups = ups_list[sub_dg_index]
     # print(f'sku_qty_dict = {sku_qty_dict}')    
     # print(f'n_ups = {n_ups}')       
-    res_dict = allocate_sku(sku_qty_dict, n_ups*n_abc) ###--->>>
+    res_dict = allocate_ups_dg_level(sku_qty_dict, n_ups*n_abc) ###--->>>
     # print(f'res_dict = {res_dict}')
 
     for sku_id in res_dict.keys():
@@ -604,13 +557,6 @@ end_time = datetime.now()
 print(start_time)
 print(end_time)
 print('running time =', (end_time-start_time).seconds, 'seconds')
-
-# COMMAND ----------
-
-# {'b0': ['dg_01', 'dg_02', 'dg_03', 'dg_04'], 'b1': ['dg_05', 'dg_06', 'dg_07', 'dg_08', 'dg_09'], 'b2': ['dg_10'], 'b3': ['dg_11'], 'b4': ['dg_12', 'dg_13']} - 249.5 ppc
-#{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']} - 223
-#{'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']} - 211
-# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']} - 234
 
 # COMMAND ----------
 
