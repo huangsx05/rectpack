@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from utils.tools import allocate_cols_based_on_qty
+from utils.tools import allocate_cols_based_on_qty, get_max_sku_pds_for_each_dg
 # from model.shared_solver import allocate_ups_dg_level
 
 # ----------------------------
@@ -8,39 +8,54 @@ from utils.tools import allocate_cols_based_on_qty
 # ----------------------------
 
 
-def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
-                                          label_w_list, n_cols_search_lower, n_cols_search_upper, n_cols_upper_lim, 
-                                          n_rows, re_qty, effective_sheet_width):
+def iterate_to_get_best_n_cols_allocation(dg_id,label_w_list, n_cols_search_lower, n_cols_search_upper, n_cols_upper_lim, 
+                                          n_rows, re_qty, effective_sheet_width, sheet_size,
+                                          dg_sku_qty_dict,params_dict):
   """
   针对一个dg_comb和一个sheet_size
   遍历所有情况获得columns分配的最优解
   """
+  sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
+  sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
+
+  min_pds = 1e12 #优化目标
+  n_cols = [0]*len(label_w_list)
+  best_pds_list = [1e12]*len(label_w_list) #基于max_sku_pds
+
   # print('iterate_to_get_best_n_cols_allocation')
   if len(label_w_list)==1:
-    # print(f"len(label_w_list)==1, ")
-    return n_cols_upper_lim
+    for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
+      cur_n_cols = [i]        
+      label_width_sum = sum(np.multiply(cur_n_cols, label_w_list))
+      if label_width_sum > effective_sheet_width: #无效解
+        continue        
+      ups_list = np.multiply(cur_n_cols, n_rows) #每个dg的ups
+      pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+      metric = np.max(pds_list)*sheet_weight     
+      if metric<min_pds:
+        min_pds = metric
+        n_cols = cur_n_cols
+        best_pds_list = pds_list
 
   elif len(label_w_list)==2:
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         cur_n_cols = [i,j]        
         label_width_sum = sum(np.multiply(cur_n_cols, label_w_list))
         if label_width_sum > effective_sheet_width: #无效解
           continue        
-        ups_list = np.multiply(cur_n_cols, n_rows)
+        ups_list = np.multiply(cur_n_cols, n_rows) #每个dg的ups
         # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-        pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-        metric = np.max(pds_list)
-        # print(f"n_col={i},{j}; metric={metric}")        
+        # pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]\
+        pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+        metric = np.max(pds_list)*sheet_weight     
+        # print("i, j, pds_list, metric, min_pds", i, j, pds_list, metric, min_pds)
         if metric<min_pds:
           min_pds = metric
           n_cols = cur_n_cols
+          best_pds_list = pds_list
 
   elif len(label_w_list)==3:
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):        
@@ -50,15 +65,14 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
             continue        
           ups_list = np.multiply(cur_n_cols, n_rows)
           # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-          pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-          metric = np.max(pds_list)
+          pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+          metric = np.max(pds_list)*sheet_weight   
           if metric<min_pds:
             min_pds = metric
             n_cols = cur_n_cols
+            best_pds_list = pds_list
 
   elif len(label_w_list)==4:
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
@@ -69,17 +83,16 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
               continue        
             ups_list = np.multiply(cur_n_cols, n_rows)
             # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-            pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-            metric = np.max(pds_list)
+            pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+            metric = np.max(pds_list)*sheet_weight   
             if metric<min_pds:
               min_pds = metric
               n_cols = cur_n_cols
+              best_pds_list = pds_list
 
   elif len(label_w_list)==5:
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
-      print(i, 'be patient')
+      # print(i, 'be patient')
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
           for l in range(n_cols_search_lower[3],n_cols_search_upper[3]+1): 
@@ -90,18 +103,16 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                 continue        
               ups_list = np.multiply(cur_n_cols, n_rows)
               # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-              pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-              metric = np.max(pds_list)
+              pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+              metric = np.max(pds_list)*sheet_weight   
               if metric<min_pds:
                 min_pds = metric
-                n_cols = cur_n_cols                              
+                n_cols = cur_n_cols
+                best_pds_list = pds_list                            
 
   elif len(label_w_list)==6:
-    # print('iterate_to_get_best_n_cols_allocation - case = 6 dg')
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
-      print(i, 'be patient')
+      # print(i, 'be patient')
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
           for l in range(n_cols_search_lower[3],n_cols_search_upper[3]+1): 
@@ -113,18 +124,16 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                   continue        
                 ups_list = np.multiply(cur_n_cols, n_rows)
                 # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-                pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-                metric = np.max(pds_list)
+                pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+                metric = np.max(pds_list)*sheet_weight   
                 if metric<min_pds:
                   min_pds = metric
-                  n_cols = cur_n_cols                                  
+                  n_cols = cur_n_cols
+                  best_pds_list = pds_list                                  
 
   elif len(label_w_list)==7:
-    # print('iterate_to_get_best_n_cols_allocation - case = 6 dg')
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
-      print(i, 'be patient')
+      # print(i, 'be patient')
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
           for l in range(n_cols_search_lower[3],n_cols_search_upper[3]+1): 
@@ -137,18 +146,16 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                     continue        
                   ups_list = np.multiply(cur_n_cols, n_rows)
                   # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-                  pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-                  metric = np.max(pds_list)
+                  pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+                  metric = np.max(pds_list)*sheet_weight   
                   if metric<min_pds:
                     min_pds = metric
-                    n_cols = cur_n_cols     
+                    n_cols = cur_n_cols
+                    best_pds_list = pds_list      
 
   elif len(label_w_list)==8:
-    # print('iterate_to_get_best_n_cols_allocation - case = 6 dg')
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
-      print(i, 'be patient')
+      # print(i, 'be patient')
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
           for l in range(n_cols_search_lower[3],n_cols_search_upper[3]+1): 
@@ -162,18 +169,16 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                       continue        
                     ups_list = np.multiply(cur_n_cols, n_rows)
                     # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-                    pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-                    metric = np.max(pds_list)
+                    pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+                    metric = np.max(pds_list)*sheet_weight   
                     if metric<min_pds:
                       min_pds = metric
-                      n_cols = cur_n_cols        
+                      n_cols = cur_n_cols
+                      best_pds_list = pds_list        
 
   elif len(label_w_list)==9:
-    # print('iterate_to_get_best_n_cols_allocation - case = 6 dg')
-    min_pds = 1e6
-    n_cols = [0]*len(label_w_list)
     for i in range(n_cols_search_lower[0],n_cols_search_upper[0]+1):
-      print(i, 'be patient')
+      # print(i, 'be patient')
       for j in range(n_cols_search_lower[1],n_cols_search_upper[1]+1):
         for k in range(n_cols_search_lower[2],n_cols_search_upper[2]+1):      
           for l in range(n_cols_search_lower[3],n_cols_search_upper[3]+1): 
@@ -188,74 +193,84 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                         continue        
                       ups_list = np.multiply(cur_n_cols, n_rows)
                       # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
-                      pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
-                      metric = np.max(pds_list)
+                      pds_list = get_max_sku_pds_for_each_dg(dg_id,ups_list, dg_sku_qty_dict,params_dict) ###--->>>
+                      metric = np.max(pds_list)*sheet_weight   
                       if metric<min_pds:
                         min_pds = metric
-                        n_cols = cur_n_cols        
+                        n_cols = cur_n_cols
+                        best_pds_list = pds_list             
   else:
     print('to add more codes to consider theis case')
     print(10/0)
 
   # print(f'iterate_to_get_best_n_cols_allocation ---> return n_cols = {n_cols}')
-  return n_cols#, min_pds
+  return n_cols, best_pds_list
 
 
-def get_n_cols_for_dg_comb_on_one_sheetsize(#df_i, n_abc, comb_name,
-                                            dg_id,cg_id,label_w_list,label_h_list,re_qty,sheet_size,ink_seperator_width,layout_tolerance):
+def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_list,re_qty,sheet_size,
+                                            dg_sku_qty_dict,params_dict):
   """
   用于中离
   一列只有一个dg
   返回每个dg布局多少列
-  采用遍历的方法
+  采用给予初始解和tolerance遍历的方法
   """
+  can_layout = True
+  ink_seperator_width = params_dict['business_params']['ink_seperator_width']
+
   #基本信息
   n_dg = len(dg_id)
   n_cg = len(set(cg_id))
   n_ink_seperator = n_cg-1
   sheet_width = sheet_size[0]
-  effective_sheet_width = sheet_width - n_ink_seperator*ink_seperator_width
+  effective_sheet_width = sheet_width-n_ink_seperator*ink_seperator_width
   # print('dg_id, n_cg, n_dg, n_ink_seperator, sheet_width, ink_seperator_width, effective_sheet_width = ', dg_id, n_cg, n_dg, n_ink_seperator, sheet_width, ink_seperator_width, effective_sheet_width)
 
-  # --- 在sheet_size上做layout ----------------------------------------------
+  #在sheet_size上做layout
+  #限制条件
   n_rows = [int(sheet_size[1]/h) for h in label_h_list] #每一个dg的行数
   n_cols_upper_lim = [int(effective_sheet_width/w) for w in label_w_list] #每一个dg的最大列数
-
   #初始解：按照tot_cols_init预分配 
   tot_cols = np.min(n_cols_upper_lim) #初始总列数
-  n_cols = allocate_cols_based_on_qty(tot_cols, re_qty)
-  # print(f'n_cols heuristics initial solution = {n_cols}')
+  tot_cols = np.max([tot_cols, n_dg]) #保证每个dg至少有一列
+  # print(f'n_cols heuristics initial solution = {tot_cols}>{np.min(n_cols_upper_lim)}')
+  n_cols = allocate_cols_based_on_qty(tot_cols, n_rows, re_qty) ###--->>>
+  # print(f'n_cols heuristics initial solution after allocation = {n_cols}')
 
-  #逐步增大列数直至超出effective_sheet_width
+  #处理edge case
   label_width_sum = sum(np.multiply(n_cols, label_w_list))
+  if label_width_sum > effective_sheet_width:
+    can_layout = False
+    return can_layout, n_rows, n_cols, [], []
+  
+  #逐步增大列数直至超出effective_sheet_width, 得到最大的n_cols初始解
   temp_tot_cols = tot_cols
   while label_width_sum < effective_sheet_width:
     temp_tot_cols += 1
-    temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, re_qty)
+    temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, n_rows, re_qty) ###--->>>
     label_width_sum = sum(np.multiply(temp_n_cols, label_w_list))
     if label_width_sum <= effective_sheet_width: #有效解，更新结果
       tot_cols = temp_tot_cols
       n_cols = temp_n_cols
   # print(f'n_cols heuristics final solution = {n_cols}')
 
-  tolerance = layout_tolerance
-  n_cols_upper_lim = n_cols
-  n_cols_search_upper = [int(i+tolerance) for i in n_cols_upper_lim]
-  n_cols_search_lower = [int(np.max([i-tolerance,1])) for i in n_cols_upper_lim]
+  tolerance = params_dict['algo_params']['layout_tolerance']
+  n_cols_search_upper = [np.min([int(n_cols[i]+tolerance),n_cols_upper_lim[i]]) for i in range(n_dg)] #不超过上限
+  n_cols_search_lower = [int(np.max([i-tolerance,1])) for i in n_cols] #每个dg至少有1列
+  n_cols_upper_lim = n_cols #初始解，不要被变量名误导，不是上限
   #---------------------------------------------------------------------------
 
-  #遍历所有情况获得columns分配的最优解
-  n_cols = iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
-                                                 label_w_list, n_cols_search_lower, n_cols_search_upper, n_cols_upper_lim,
-                                                 n_rows, re_qty, effective_sheet_width) #暂只考虑n_dg<=6的情况，若超出则需要在该方法中加情况
+  #遍历n_cols上下限获得columns分配的最优解
+  n_cols, pds_list = iterate_to_get_best_n_cols_allocation(dg_id,label_w_list, n_cols_search_lower, n_cols_search_upper, n_cols_upper_lim,
+                                                 n_rows, re_qty, effective_sheet_width, sheet_size, dg_sku_qty_dict,params_dict) ###--->>>
   # print(f"n_cols search range = {n_cols_search_lower},{n_cols_search_upper}")  
   # print(f"n_cols best solution = {n_cols}")
   ups_list = list(np.multiply(n_cols, n_rows))
-  pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
+  # pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
   # print(f'n_rows={n_rows}, n_cols={n_cols}, ups={ups_list}, pds={pds_list}')  
   # print(f'label_width_sum={label_width_sum}, effective_sheet_width={effective_sheet_width}')  
 
-  return n_rows, n_cols, ups_list, pds_list
+  return can_layout, n_rows, n_cols, ups_list, pds_list
 
 
 # ----------------------------

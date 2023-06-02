@@ -13,14 +13,31 @@ def add_sub_batch_id_to_df(df_3_3, batch):
   return df_3_3
 
 
-def allocate_cols_based_on_qty(tot_n_cols, qty_list):
-  tot_qty = np.sum(qty_list)
-  n_cols = [np.max([round(qty/tot_qty*tot_n_cols),1]) for qty in qty_list] #每个dg的初始列数, 并保证至少有一列
-  n_max_index = np.argmax(n_cols)
-  # print(f'n_max_index={n_max_index}')
-  updated_n_col = tot_n_cols - np.sum(n_cols[:n_max_index]) - np.sum(n_cols[n_max_index+1:])
-  n_cols[n_max_index] = updated_n_col #调整最多列数的dg，保证列数总和等于tot_n_cols
+def allocate_cols_based_on_qty(tot_n_cols, n_rows, qty_list):
+  # tot_qty = np.sum(qty_list)
+  # n_cols = [np.max([round(qty/tot_qty*tot_n_cols),1]) for qty in qty_list] #每个dg的初始列数, 并保证至少有一列
+  # n_cols = [round(qty/tot_qty*tot_n_cols) for qty in qty_list] #每个dg的初始列数, 并保证至少有一列  
+  # n_cols_float = [qty/tot_qty*tot_n_cols for qty in qty_list]
+  # if tot_n_cols!=np.sum(n_cols):
+  #   n_max_index = np.argmax(n_cols)
+  #   # print(f'n_max_index={n_max_index}')
+  #   updated_n_col = tot_n_cols - np.sum(n_cols[:n_max_index]) - np.sum(n_cols[n_max_index+1:])
+  #   n_cols[n_max_index] = updated_n_col #调整最多列数的dg，保证列数总和等于tot_n_cols
+  #   assert tot_n_cols == np.sum(n_cols)
+
+  n_cols = [1]*len(qty_list)
+  # print(tot_n_cols, np.sum(n_cols))
+  if tot_n_cols<np.sum(n_cols): #调用函数已防止此情况发生，可以省略
+    print('need to debug')
+    stop = 1/0
+  
+  while np.sum(n_cols)<tot_n_cols:
+    ups_list = list(np.multiply(n_cols, n_rows))
+    pds_list = [np.ceil(a/b) for a, b in zip(qty_list, ups_list)]    
+    n_max_index = np.argmax(pds_list)
+    n_cols[n_max_index] += 1
   assert tot_n_cols == np.sum(n_cols)
+
   return n_cols
 
 
@@ -78,3 +95,45 @@ def get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,l
       comb_res_w = comb_res_w+comb_res_w_add
       comb_res_h = comb_res_h+comb_res_h_add      
   return comb_names, comb_res_w, comb_res_h
+
+
+def allocate_sku(sku_qty_dict, n_ups):
+  """
+  算法一：以小到大
+  :param sku_qty_dict: {sku:qty}, 每一个sku的qty
+  :param n_ups: int, 所有sku的ups总和
+  """
+  sku_list = list(sku_qty_dict.keys())
+  qty_list = list(sku_qty_dict.values())
+  cur_ups = [1]*len(sku_qty_dict)
+  while np.sum(cur_ups)<n_ups:
+    cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
+    imax = cur_pds.index(max(cur_pds))
+    cur_ups[imax] += 1
+  
+  res_dict = {}
+  cur_pds = [a/b for a,b in zip(qty_list, cur_ups)]
+  for i in range(len(sku_qty_dict)):
+    res_dict[sku_list[i]] = {'qty':qty_list[i],
+                              'ups':cur_ups[i], 
+                              'pds':int(np.ceil(cur_pds[i]))}
+  return res_dict
+
+
+def get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict):
+  n_abc = params_dict['user_params']['n_abc']
+  pds_list = [] #每一个dg的最大sku_pds
+  for sub_dg_index in range(len(dg_id)): #在每一个dg内部分配做sku的ups分配
+    sub_dg = dg_id[sub_dg_index] #dg_id
+    #step 1: 按照n_abc*ups分配allocate sku
+    sku_qty_dict = dg_sku_qty_dict[sub_dg]
+    n_ups = ups_list[sub_dg_index]
+    # print(f'sku_qty_dict = {sku_qty_dict}')    
+    # print(f'n_ups = {n_ups}')       
+    res_dict = allocate_sku(sku_qty_dict, n_ups*n_abc) ###--->>>
+    # print(f'res_dict = {res_dict}')
+    sku_pds_list = []
+    for sku_id in res_dict.keys():
+      sku_pds_list.append(res_dict[sku_id]['pds'])  
+    pds_list.append(np.max(sku_pds_list))
+  return pds_list

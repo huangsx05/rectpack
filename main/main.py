@@ -82,8 +82,8 @@ if batching_type=='1_OCOD':
 elif batching_type=='2_OCMD':
   pass
 elif batching_type=='3_MCMD_Seperater':  
-  notebook_path = './3_mcmd_seperator_dg_pds'
-  dbutils.notebook.run(notebook_path, 36000, {'config_filename':config_filename})
+  notebook_path = './3_mcmd_seperator_sku_pds'
+  dbutils.notebook.run(notebook_path, params_dict['algo_params']['timeout_limit'], {'config_filename':config_filename})
 elif batching_type=='4_MCMD_No_Seperater':
   pass
 
