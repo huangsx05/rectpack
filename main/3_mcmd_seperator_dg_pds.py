@@ -126,19 +126,19 @@ print(cg_agg_cnt)
 #         'b3':['dg_094','dg_095','dg_098','dg_099']}
 
 # batches_list = [
-# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']},
-# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']},
-# {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']}
+# # {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_05'], 'b2': ['dg_01', 'dg_06', 'dg_07'], 'b3': ['dg_03', 'dg_08']},
+# # {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_04', 'dg_05', 'dg_06', 'dg_07', 'dg_08'], 'b2': ['dg_01']},
+# # {'b0': ['dg_02', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_08'], 'b2': ['dg_05'], 'b3': ['dg_04', 'dg_06'], 'b4': ['dg_01', 'dg_03', 'dg_07']}
 # ]
 
-# ppc_batch = [
-# {'b0':['dg_01','dg_02','dg_03','dg_04'],
-#  'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],
-#  'b2':['dg_10'],
-#  'b3':['dg_11'],
-#  'b4':['dg_12','dg_13'] } #ppc solution - 0519
-# ]
-# batches_list = ppc_batch+batches_list
+ppc_batch = [
+{'b0':['dg_01','dg_02','dg_03','dg_04'],
+ 'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],
+ 'b2':['dg_10'],
+ 'b3':['dg_11'],
+ 'b4':['dg_12','dg_13'] } #ppc solution - 0519
+]
+batches_list = ppc_batch+batches_list
 
 old_batches = [
   ]
@@ -476,8 +476,20 @@ display(df_res)
 
 # COMMAND ----------
 
-metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'sku_pds':'max'}).values)
-print(f'sum_pds = {metrics_3_3}') #在只有一种sheet_size的情况下只看sum_pds
+df_res['weight'] = 1
+df_res.loc[df_res['Printing_area']=='522x328','weight'] = 0.5
+df_res['weighted_pds'] = df_res['weight']*df_res['pds']
+
+# COMMAND ----------
+
+df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).reset_index()
+
+# COMMAND ----------
+
+metrics_3_3 = np.sum(df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).values)
+# metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'weighted_sku_pds':'max'}).values)
+n_batch = df_res['batch_id'].nunique()
+print(f'sum_pds = {metrics_3_3+7*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
 
 # COMMAND ----------
 

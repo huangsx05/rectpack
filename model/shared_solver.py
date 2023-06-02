@@ -132,8 +132,8 @@ def iterate_to_solve_min_total_sheet_area(#df_i, n_abc,
   best_sheet = [999,999]
   min_tot_area = 999999999999
   best_res = {'re_qty': [0, 0], 'n_rows': [0, 0], 'n_cols': [0, 0], 'ups': [0,  0], 'pds': [0, 0]}
-  best_sku_pds = 1e12
-  df_sku_res = None  
+  # best_sku_pds = 1e12
+  # df_sku_res = None  
 
   #遍历所有comb和sheet_size，选择总面积最小的comb+sheet_size的组合
   for comb_index in range(len(comb_names)):

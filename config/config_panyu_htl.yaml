@@ -47,9 +47,9 @@
                       'n_color_limit': 5,                        
                       },  
   'algo_params': {'sample_batch': True,
-                  'sample_batch_num': 1000,  #取样的batch数量
-                  'upper_sub_batch_num': 6, #sub_batch数量的上限
-                  'lower_sub_batch_num': 3, #sub_batch数量的下限
+                  'sample_batch_num': 100,  #取样的batch数量
+                  'upper_sub_batch_num': 5, #sub_batch数量的上限
+                  'lower_sub_batch_num': 4, #sub_batch数量的下限
                   'layout_mode': 'one_dg_one_column', #目前只支持这个
                   'layout_tolerance': 1,
                   },                 

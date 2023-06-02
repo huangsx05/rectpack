@@ -33,8 +33,9 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
         # max_sku_pds = allocate_ups_sku_level(df_i, n_abc, comb_name, ups_list)
         pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
         metric = np.max(pds_list)
+        # print(f"n_col={i},{j}; metric={metric}")        
         if metric<min_pds:
-          # min_pds = max_sku_pds
+          min_pds = metric
           n_cols = cur_n_cols
 
   elif len(label_w_list)==3:
@@ -52,7 +53,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
           pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
           metric = np.max(pds_list)
           if metric<min_pds:
-            # min_pds = max_sku_pds
+            min_pds = metric
             n_cols = cur_n_cols
 
   elif len(label_w_list)==4:
@@ -71,7 +72,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
             pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
             metric = np.max(pds_list)
             if metric<min_pds:
-              # min_pds = max_sku_pds
+              min_pds = metric
               n_cols = cur_n_cols
 
   elif len(label_w_list)==5:
@@ -92,7 +93,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
               pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
               metric = np.max(pds_list)
               if metric<min_pds:
-                # min_pds = max_sku_pds
+                min_pds = metric
                 n_cols = cur_n_cols                              
 
   elif len(label_w_list)==6:
@@ -115,7 +116,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                 pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
                 metric = np.max(pds_list)
                 if metric<min_pds:
-                  # min_pds = max_sku_pds
+                  min_pds = metric
                   n_cols = cur_n_cols                                  
 
   elif len(label_w_list)==7:
@@ -139,7 +140,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                   pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
                   metric = np.max(pds_list)
                   if metric<min_pds:
-                    # min_pds = max_sku_pds
+                    min_pds = metric
                     n_cols = cur_n_cols     
 
   elif len(label_w_list)==8:
@@ -164,7 +165,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                     pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
                     metric = np.max(pds_list)
                     if metric<min_pds:
-                      # min_pds = max_sku_pds
+                      min_pds = metric
                       n_cols = cur_n_cols        
 
   elif len(label_w_list)==9:
@@ -190,7 +191,7 @@ def iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                       pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
                       metric = np.max(pds_list)
                       if metric<min_pds:
-                        # min_pds = max_sku_pds
+                        min_pds = metric
                         n_cols = cur_n_cols        
   else:
     print('to add more codes to consider theis case')
@@ -223,7 +224,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(#df_i, n_abc, comb_name,
   #初始解：按照tot_cols_init预分配 
   tot_cols = np.min(n_cols_upper_lim) #初始总列数
   n_cols = allocate_cols_based_on_qty(tot_cols, re_qty)
-  print(f'n_cols heuristics initial solution = {n_cols}')
+  # print(f'n_cols heuristics initial solution = {n_cols}')
 
   #逐步增大列数直至超出effective_sheet_width
   label_width_sum = sum(np.multiply(n_cols, label_w_list))
@@ -235,7 +236,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(#df_i, n_abc, comb_name,
     if label_width_sum <= effective_sheet_width: #有效解，更新结果
       tot_cols = temp_tot_cols
       n_cols = temp_n_cols
-  print(f'n_cols heuristics final solution = {n_cols}')
+  # print(f'n_cols heuristics final solution = {n_cols}')
 
   tolerance = layout_tolerance
   n_cols_upper_lim = n_cols
@@ -247,7 +248,8 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(#df_i, n_abc, comb_name,
   n_cols = iterate_to_get_best_n_cols_allocation(#df_i, n_abc, comb_name,
                                                  label_w_list, n_cols_search_lower, n_cols_search_upper, n_cols_upper_lim,
                                                  n_rows, re_qty, effective_sheet_width) #暂只考虑n_dg<=6的情况，若超出则需要在该方法中加情况
-  # print(n_cols, n_rows)
+  # print(f"n_cols search range = {n_cols_search_lower},{n_cols_search_upper}")  
+  # print(f"n_cols best solution = {n_cols}")
   ups_list = list(np.multiply(n_cols, n_rows))
   pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
   # print(f'n_rows={n_rows}, n_cols={n_cols}, ups={ups_list}, pds={pds_list}')  

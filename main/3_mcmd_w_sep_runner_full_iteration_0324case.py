@@ -108,6 +108,7 @@ n_color_limit = params_dict['n_color_limit'][batching_type]
 # COMMAND ----------
 
 df = pd.read_csv(input_file)
+df['Re_Qty'] = df['SKU_QUANTITY']
 if len(filter_Color_Group)>0:
   df = df[df['Color_Group'].isin(filter_Color_Group)]
 display(df) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
@@ -164,7 +165,7 @@ print(cg_agg_cnt)
 
 # MAGIC %%time
 # MAGIC import random
-# MAGIC sample_num = 100000
+# MAGIC sample_num = 100
 # MAGIC M = min(5,df_3['dg_id'].nunique())  #分组数量上限
 # MAGIC N = df_3['dg_id'].nunique() #元素数量
 # MAGIC dg_sorted_list = sorted(df_3['dg_id'].tolist())
@@ -228,14 +229,12 @@ print(cg_agg_cnt)
 #         'b3':['dg_094','dg_095','dg_098','dg_099']}
 
 # batches_list = [
-# # {'b0': ['dg_087', 'dg_094', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086', 'dg_093'], 'b2': ['dg_088', 'dg_091']},
-# # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_088', 'dg_091'], 'b3': ['dg_084', 'dg_086', 'dg_093']},
-# {'b0': ['dg_094', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_095'], 'b2': ['dg_086', 'dg_093'], 'b3': ['dg_084'], 'b4': ['dg_088', 'dg_091']}
+# # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086', 'dg_094'], 'b2': ['dg_088'], 'b3': ['dg_087', 'dg_093'], 'b4': ['dg_091']}
 # ]
 
 ppc_batch = [
-{'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_087'], 'b2': ['dg_088', 'dg_093'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
-{'b0': ['dg_087', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_093'], 'b2': ['dg_088'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
+# {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_087'], 'b2': ['dg_088', 'dg_093'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
+# {'b0': ['dg_087', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_093'], 'b2': ['dg_088'], 'b3': ['dg_091'], 'b4': ['dg_086', 'dg_094']},
 {'b0':['dg_084','dg_086'],
  'b1':['dg_087','dg_088'],
  'b2':['dg_091','dg_093'],
@@ -580,8 +579,20 @@ display(df_res)
 
 # COMMAND ----------
 
+df_res['weight'] = 1
+df_res.loc[df_res['Printing_area']=='522x328','weight'] = 0.5
+df_res['weighted_pds'] = df_res['weight']*df_res['pds']
+
+metrics_3_3 = np.sum(df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).values)
+# metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'weighted_sku_pds':'max'}).values)
+n_batch = df_res['batch_id'].nunique()+1
+print(f'sum_pds = {metrics_3_3+7*n_batch+230}') #在只有一种sheet_size的情况下只看sum_pds
+
+# COMMAND ----------
+
 metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'sku_pds':'max'}).values)
-print(f'sum_pds = {metrics_3_3}') #在只有一种sheet_size的情况下只看sum_pds
+n_batch = df_res['batch_id'].nunique()+1
+print(f'sum_pds = {metrics_3_3+7*n_batch+230}') #在只有一种sheet_size的情况下只看sum_pds #653
 
 # COMMAND ----------
 
@@ -592,15 +603,8 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
-# {'b0':['dg_084','dg_086'],
-#  'b1':['dg_087','dg_088'],
-#  'b2':['dg_091','dg_093'],
-#  'b3':['dg_094','dg_095','dg_098','dg_099']
-#  } - 426
-# {'b0': ['dg_087', 'dg_094', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086', 'dg_093'], 'b2': ['dg_088', 'dg_091']}
-# {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_088', 'dg_091'], 'b3': ['dg_084', 'dg_086', 'dg_093']}
-# {'b0': ['dg_094', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_095'], 'b2': ['dg_086', 'dg_093'], 'b3': ['dg_084'], 'b4': ['dg_088', 'dg_091']} - 378
-#{'batch_0': 426.0, 'batch_1': 365.0, 'batch_2': 369.5, 'batch_3': 378.0}
+{'b0': ['dg_084', 'dg_086'], 'b1': ['dg_087', 'dg_088'], 'b2': ['dg_091', 'dg_093'], 'b3': ['dg_094', 'dg_095', 'dg_098', 'dg_099']} - 647
+{'b0': ['dg_087', 'dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_084', 'dg_086'], 'b2': ['dg_093', 'dg_094'], 'b3': ['dg_091'], 'b4': ['dg_088']} - 645
 
 # COMMAND ----------
 
