@@ -539,28 +539,10 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
-276
-# $$$$$$ 147/972 calculating batch = {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03', 'dg_05', 'dg_09'], 'b2': ['dg_07', 'dg_08'], 'b3': ['dg_01', 'dg_02', 'dg_04', 'dg_06']} $$$$$$
-# ****** final metric for batch_147 = 275
-
-# $$$$$$ 231/972 calculating batch = {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_06', 'dg_07', 'dg_08', 'dg_09'], 'b2': ['dg_01', 'dg_03', 'dg_05'], 'b3': ['dg_02', 'dg_04']} $$$$$$
-# ****** final metric for batch_231 = 271
-
-# $$$$$$ 209/972 calculating batch = {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_09'], 'b2': ['dg_06', 'dg_07', 'dg_08'], 'b3': ['dg_01', 'dg_03', 'dg_04', 'dg_05'], 'b4': ['dg_02']} $$$$$$
-# ****** final metric for batch_209 = 273
-
-# $$$$$$ 210/972 calculating batch = {'b0': ['dg_02', 'dg_04', 'dg_06', 'dg_09', 'dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_03'], 'b2': ['dg_01', 'dg_07', 'dg_08'], 'b3': ['dg_05']} $$$$$$
-# ERROR: nunique_color > 5, skip this case
-
-# $$$$$$ 309/972 calculating batch = {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']} $$$$$$
-# ****** final metric for batch_309 = 269
-
-# $$$$$$ 350/972 calculating batch = {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_04', 'dg_08'], 'b2': ['dg_09'], 'b3': ['dg_01', 'dg_02'], 'b4': ['dg_03', 'dg_05'], 'b5': ['dg_06', 'dg_07']} $$$$$$
-# ****** final metric for batch_350 = 278.5
-
-#https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/509730401455551/run/1
-#6209s
+# 0519 case
+# https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/509730401455551/run/1
 
 # COMMAND ----------
 
-
+# 0319 case
+# https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/389854053364790/run/1
