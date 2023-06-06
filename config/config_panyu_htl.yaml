@@ -35,9 +35,7 @@
 
 
 3_MCMD_Seperater: {
-  'input_file': '../input/HTL_input_0519.csv', #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
-  'filter_Color_Group': [], #空代表不筛选，全部计算
-  # 'filter_Color_Group': ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
+
 
   'business_params': {'criteria': {'678<+>528': {'pds': 80, 'internal_date': 3, 'weight': 1},
                                    '582<+>482': {'pds': 80, 'internal_date': 3, 'weight': 1}, 

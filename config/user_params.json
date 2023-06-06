@@ -1,0 +1,7 @@
+{
+  "batching_type": "3_MCMD_Seperater", 
+  "n_abc": 1, 
+  "n_color": 1, 
+  "request_type": "1_Batching_Proposal", 
+  "sheet_size_list": [[678, 528], [582, 482], [522, 328]]
+  }
