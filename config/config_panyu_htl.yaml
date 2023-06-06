@@ -35,9 +35,9 @@
 
 
 3_MCMD_Seperater: {
-  'input_file': '../input/HTL_input_0419.csv', #'../input/HTL_input_0519.csv',
-  # 'filter_Color_Group': [], #空代表不筛选，全部计算
-  'filter_Color_Group': ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
+  'input_file': '../input/HTL_input_0519.csv', #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
+  'filter_Color_Group': [], #空代表不筛选，全部计算
+  # 'filter_Color_Group': ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
 
   'business_params': {'criteria': {'678<+>528': {'pds': 80, 'internal_date': 3, 'weight': 1},
                                    '582<+>482': {'pds': 80, 'internal_date': 3, 'weight': 1}, 
@@ -47,14 +47,15 @@
                       'n_color_limit': 5,                        
                       },  
   'algo_params': {'criteria_check': False,
-                  'sample_batch': True,
-                  'sample_batch_num': 1000000,  #取样的batch数量
+                  'batch_generate_mode': 'heuristics_sub_batch_number', #'lower_upper_bound', 'heuristics_sub_batch_number'
+                  # 'sample_batch': True,
+                  'sample_batch_num': 10,  #每一轮循环取样的batch数量
                   'upper_sub_batch_num': 6, #sub_batch数量的上限
                   'lower_sub_batch_num': 4, #sub_batch数量的下限
                   'layout_mode': 'one_dg_one_column', #目前只支持这个
                   'layout_tolerance': 1,
-                  'compute_time_limit': 36000, #in seconds       
-                  'timeout_limit': 36000, #in seconds                                  
+                  'algo_time_limit': 120, #in seconds       
+                  'timeout_limit': 600, #in seconds                                  
                   },                 
   }
 

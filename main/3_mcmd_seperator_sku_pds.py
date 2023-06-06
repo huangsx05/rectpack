@@ -13,6 +13,7 @@
 
 import numpy as np
 import pandas as pd
+import random
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 
@@ -20,7 +21,7 @@ from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_leve
 from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
 # from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
 from utils.tools import allocate_sku, get_all_dg_combinations_with_orientation
-from model.shared_solver import get_batches_by_sampling, iterate_to_solve_min_total_sheet_area, split_abc_ups
+from model.shared_solver import get_batches_with_filter, iterate_to_solve_min_total_sheet_area, split_abc_ups
 
 # COMMAND ----------
 
@@ -47,15 +48,19 @@ for k,v in params_dict.items():
 
 # COMMAND ----------
 
-# batching_type = params_dict['user_params']['batching_type']
-n_abc = params_dict['user_params']['n_abc']
-# sheet_size_list = params_dict['user_params']['sheet_size_list']
+# 当前notebook会用到的params，其他的会再调用函数中直接传入params_dict
+filter_Color_Group = params_dict['filter_Color_Group']
+input_file = params_dict['input_file']
 
-# criteria = params_dict['business_params']['criteria']
+algo_time_limit = params_dict['algo_params']['algo_time_limit']
+# sample_batch = params_dict['algo_params']['sample_batch'] #true/false
+sample_batch_num = params_dict['algo_params']['sample_batch_num'] #考虑做成动态调整,并考虑在时间允许的范围内loop
+
 ink_seperator_width = params_dict['business_params']['ink_seperator_width']
+n_color_limit = params_dict['business_params']['n_color_limit']
 
-# layout_mode = params_dict['algo_params']['layout_mode']
-# layout_tolerance = params_dict['algo_params']['layout_tolerance']
+add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+n_abc = params_dict['user_params']['n_abc']
 
 # COMMAND ----------
 
@@ -64,15 +69,10 @@ ink_seperator_width = params_dict['business_params']['ink_seperator_width']
 
 # COMMAND ----------
 
-filter_Color_Group = params_dict['filter_Color_Group']
-input_file = params_dict['input_file']
-
-# COMMAND ----------
-
 #inputs
-df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group)
-print(f"input data before data cleaning:")
-display(df_raw) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
+df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
+# print(f"input data before data cleaning:")
+# display(df_raw) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
 print(f"input data after data cleaning:")
 display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
 print(f"aggregated input data at dg level:")
@@ -80,6 +80,7 @@ display(df_1) #dg颗粒度的input data #aggregation by cg_dg 以cg_dg_id分组�
 
 # COMMAND ----------
 
+#准备sku level的dict
 dg_sku_qty_dict = {}
 for dg_name in df['dimension_group'].unique(): #在每一个dg内部分配做sku的ups分配
   df_i_sub = df[df['dimension_group']==dg_name]
@@ -117,11 +118,22 @@ print(cg_agg_cnt)
 
 # COMMAND ----------
 
-n_color_limit = params_dict['business_params']['n_color_limit']
+print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
+batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)
 
 # COMMAND ----------
 
-batches_list = get_batches_by_sampling(df_3, params_dict, n_color_limit)
+# #sample batch 输入
+# batches_list = [
+# {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
+# # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
+# ]
+
+# ppc_batch = [
+# {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
+# # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution - 0419
+# ]
+# batches_list = ppc_batch+batches_list
 
 # COMMAND ----------
 
@@ -136,195 +148,162 @@ batches_list = get_batches_by_sampling(df_3, params_dict, n_color_limit)
 
 # COMMAND ----------
 
-#sample batch 输入
+old_batches = []
+n_count = 0
+n_current = 0
 
-# batches_list = [
-# {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']},
-# ]
-
-# ppc_batch = [
-# {'b0':['dg_01','dg_02','dg_03','dg_04'],
-#  'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],
-#  'b2':['dg_10'],
-#  'b3':['dg_11'],
-#  'b4':['dg_12','dg_13'] } #ppc solution - 0519
-# ]
-
-ppc_batch = [
-{'b0':['dg_084','dg_086'],
- 'b1':['dg_087','dg_088'],
- 'b2':['dg_091','dg_093'],
- 'b3':['dg_094','dg_095','dg_098','dg_099']
- } #ppc solution - 0419
-]
-batches_list = ppc_batch+batches_list
-
-old_batches = [
-  ]
-
-# COMMAND ----------
-
-#对batches_list根据dg名称排序
-for i in range(len(batches_list)):
-  dict_i = batches_list[i]
-  k = list(dict_i.keys())[0]
-  v = sorted(list(dict_i.values())[0])
-  # print(k,v)
-  dict_i[k] = v
-  batches_list[i] = dict_i
-
-#remove batches in old_batches
-print(f'before dropping old batches, len(batches) = {len(batches_list)}')
-batches = [b for b in batches_list if b not in old_batches]
-print(f'after dropping old batches, len(batches) = {len(batches)}')
-
-#batches去重
-print(f'before drop_duplicates, len(batches) = {len(batches)}')
-batches_drop_duplicates = []
-unique_str = []
-for i in range(len(batches)):
-  if str(batches[i]) not in unique_str:
-    unique_str.append(str(batches[i]))
-    batches_drop_duplicates.append(batches[i])
-batches = batches_drop_duplicates
-print(f'after drop_duplicates, len(batches) = {len(batches)}')
-
-# COMMAND ----------
-
-#转化batches输入为字典(列表转换为字典)
-batches_dict = {}
-for i in range(len(batches)):
-  batch_name = 'batch_'+str(i)
-  batches_dict[batch_name] = batches[i]
-print(batches_dict[list(batches_dict.keys())[0]]) #print a sample
-# print()
-# for k in batches_dict.keys():
-#   print(batches_dict[k])
-
-# COMMAND ----------
-
-print(batches) #for adding to old batch
-
-# COMMAND ----------
-
-add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
-
-# COMMAND ----------
-
-#遍历batches找最优batch
-#sample batches_dict
-#{'batch_0': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}, 
-# 'batch_1': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091'], 'b1': ['dg_086', 'dg_088']}}
 res_metric_3_2 = {}
 res_detail_3_2 = {}
 best_metric = 1e12
 best_index = 0
-#遍历batches
-for i in range(len(batches_dict)):
-  #初始化
-  break_flag = 0 #color#>limit时break，照理应该不生效。因为生成batch时已经根据color limit过滤过一次
-  batch_name = 'batch_'+str(i)
-  res_detail_3_2[batch_name] = {}
-  #获得batch
-  batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+best_batch = []
+best_res = {}
+
+while True: #时限未到
+  #取样
+  #remove batches in old_batches
   print()
-  print(f'{i}/{len(batches_dict)} - {batch}')
+  print(f'before dropping old batches, len(batches) = {len(batches_list)}')
+  batches_list = [b for b in batches_list if b not in old_batches]
+  print(f'after dropping old batches, len(batches) = {len(batches_list)}')
+  sample_batch_num = np.min([sample_batch_num,len(batches_list)])
+  batches = random.sample(batches_list, sample_batch_num)
 
-  #revert字典，将batch号加入df_3，获得dg和sub_batch_id的对应关系
-  batch_revert = {}
-  for k,v in batch.items():
-    for i in v:
-      batch_revert[i] = k
-  df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
-  # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
+  #转化batches输入为字典(列表转换为字典)
+  batches_dict = {}
+  for i in range(len(batches)):
+    batch_name = 'batch_'+str(n_count+i)
+    batches_dict[batch_name] = batches[i]
+  n_count += len(batches)
+  # print(batches_dict[list(batches_dict.keys())[0]]) #print a sample
 
-  #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
-  temp_sub_batch_metric = 0 #用于不满足条件时尽早结束计算
-  for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
-    # print(f'sub_batch = {batch_id}, iterate to find best dg_rotate_comb and best sheet_size')
-    #获得数据子集
-    df_i = df_3[df_3['batch_id']==batch_id].sort_values(['dg_id']) #按照dg_id排序 - 这个很重要，保证所有数据的对应性
-    # display(df_i)
-    #过滤不符合color limit的batch
-    cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
-    if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
-      print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
-      break_flag = 1
-      break
-    #准备输入数据
-    dg_id = df_i['dg_id'].values.tolist()
-    fix_orientation = df_i['fix_orientation'].values.tolist()
-    label_width = df_i['overall_label_width'].values.tolist()
-    label_length = df_i['overall_label_length'].values.tolist()
-    re_qty = df_i['re_qty'].values.tolist()
-    # print(f'dg_id = {dg_id}，re_qty = {re_qty}')
-    # print(cg_id, dg_id, fix_orientation, label_width, label_length, re_qty)
+  #主计算部分 -----------------------------------------------------------------------------------------------------------------------
+  #遍历batches找最优batch
+  #sample batches_dict
+  #{'batch_0': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}, 
+  # 'batch_1': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091'], 'b1': ['dg_086', 'dg_088']}}
+  for i in range(len(batches_dict)):
+    #初始化
+    break_flag = 0 #用于控制结果不可能更优时退出当前batch
+    batch_name = 'batch_'+str(n_current)
+    res_detail_3_2[batch_name] = {}
+    #获得batch
+    batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+    # print()
+    print(f'{n_current}/{n_count} - {batch}')
+    n_current += 1
 
-    #穷举该sub_batch所有rotation可能性的组合
-    comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,label_length)
-    # print(f'comb_names = {comb_names}')
-    # print(f'comb_res_w = {comb_res_w}')
-    # print(f'comb_res_h = {comb_res_h}')  #check w和h的对应关系
+    #revert字典，将batch号加入df_3，获得dg和sub_batch_id的对应关系
+    batch_revert = {}
+    for k,v in batch.items():
+      for i in v:
+        batch_revert[i] = k
+    df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
+    # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
 
-    #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
-    #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
-    best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(#sheet_size_list, 
-                                                                                     comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
-                                                                                     dg_sku_qty_dict, params_dict
-                                                                                    #  check_criteria=False
-                                                                                     ) ###--->>>
-    max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
-    sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
-    sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
-    temp_sub_batch_metric += max_pds*sheet_weight
+    #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
+    temp_sub_batch_metric = 0 #用于不满足条件时尽早结束计算
+    for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
+      # print(f'sub_batch = {batch_id}, iterate to find best dg_rotate_comb and best sheet_size')
+      #获得数据子集
+      df_i = df_3[df_3['batch_id']==batch_id].sort_values(['dg_id']) #按照dg_id排序 - 这个很重要，保证所有数据的对应性
+      # display(df_i)
+      # #过滤不符合color limit的batch - filter batch时已考虑
+      cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
+      # if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
+      #   print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
+      #   break_flag = 1
+      #   break
+      #准备输入数据
+      dg_id = df_i['dg_id'].values.tolist()
+      fix_orientation = df_i['fix_orientation'].values.tolist()
+      label_width = df_i['overall_label_width'].values.tolist()
+      label_length = df_i['overall_label_length'].values.tolist()
+      re_qty = df_i['re_qty'].values.tolist()
+      # print(f'dg_id = {dg_id}，re_qty = {re_qty}')
+      # print(cg_id, dg_id, fix_orientation, label_width, label_length, re_qty)
 
-    if temp_sub_batch_metric>best_metric:
-      break_flag = 1
-      print('temp_sub_batch_metric>best_metric')
-      break
-    # print(f'****** best_comb={best_comb}, best_sheet={best_sheet}, best_res={res}, min_tot_area={min_tot_area}')  
+      #穷举该sub_batch所有rotation可能性的组合
+      comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,label_length)
+      # print(f'comb_names = {comb_names}')
+      # print(f'comb_res_w = {comb_res_w}')
+      # print(f'comb_res_h = {comb_res_h}')  #check w和h的对应关系
 
-    ###########################################################################################################################
-    
-    #sub_batch结果添加至res_3_2字典
-    # batch_the_pds = np.ceil(np.sum(res['re_qty'])/np.sum(res['ups']))
-    res_detail_3_2[batch_name][batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 
-                                            # 'batch_the_pds':batch_the_pds, 
-                                            'min_tot_area':min_tot_area}
-    #{'b0': {'best_comb': 'dg_084_h<+>dg_087_w<+>dg_095_w<+>dg_098_w<+>dg_099_w', 'best_sheet': [678, 528], 'best_res': {'re_qty': [1275, 440, 5794, 4145, 690], 'ups': [26, 13, 112, 77, 22], 'pds': [50.0, 34.0, 52.0, 54.0, 32.0], 'n_rows': [13, 13, 14, 11, 11], 'n_cols': [2, 1, 8, 7, 2]}, 'max_pds': 54.0, 'min_tot_area': 19331136.0}, 'b1': {'best_comb': 'dg_093_w<+>dg_094_w', 'best_sheet': [522, 328], 'best_res': {'re_qty': [10638, 7934], 'ups': [88, 63], 'pds': [121.0, 126.0], 'n_rows': [8, 9], 'n_cols': [11, 7]}, 'max_pds': 126.0, 'min_tot_area': 21573216.0}}
+      #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
+      #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
+      best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(#sheet_size_list, 
+                                                                                      comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
+                                                                                      dg_sku_qty_dict, params_dict
+                                                                                      #  check_criteria=False
+                                                                                      ) ###--->>>
+      max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
+      sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
+      sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
+      temp_sub_batch_metric += max_pds*sheet_weight
+      # print(f'temp_sub_batch_metric={temp_sub_batch_metric}, min_tot_area={min_tot_area}')  
 
-  if break_flag == 1:
-    continue
+      if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
+        break_flag = 1
+        print('temp_sub_batch_metric>best_metric')
+        break
+      # print(f'****** best_comb={best_comb}, best_sheet={best_sheet}, best_res={res}, min_tot_area={min_tot_area}')  
 
-  #计算当前batch的指标, 更新最优指标
-  res_batch = res_detail_3_2[batch_name]
-  # 'batch_5': {
-  # 'b0': {'best_comb': 'dg_084_w<+>dg_086_h', 'best_sheet': [678, 528], 'best_res': {'n_rows': [7, 8], 'n_cols': [3, 14], 'ups': array([ 21, 112]), 'pds': [61.0, 91.0]}, 'max_pds': 91.0, 'min_tot_area': 32576544.0}, 
-  # 'b1': {'best_comb': 'dg_087_w<+>dg_088_w', 'best_sheet': [678, 528], 'best_res': {'n_rows': [13, 8], 'n_cols': [1, 14], 'ups': array([ 13, 112]), 'pds': [34.0, 99.0]}, 'max_pds': 99.0, 'min_tot_area': 35440416.0}
-  # }
-  metric = 0
-  for k,v in res_batch.items():
-    #考虑pds和sheet_weight
-    sheet = v['best_sheet']
-    sheet_name = str(int(sheet[0]))+'<+>'+str(int(sheet[1]))
-    sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
-    add_sku_metric = v['max_pds']
-    metric += add_sku_metric*sheet_weight
-  #再考虑版数和pds之间的权衡
-  add_metric = len(res_batch)*add_pds_per_sheet
-  metric += add_metric
-  res_metric_3_2[batch_name] = metric
+      ###########################################################################################################################
+      
+      #sub_batch结果添加至res_3_2字典
+      # batch_the_pds = np.ceil(np.sum(res['re_qty'])/np.sum(res['ups']))
+      res_detail_3_2[batch_name][batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 
+                                              # 'batch_the_pds':batch_the_pds, 
+                                              'min_tot_area':min_tot_area}
+      #{'b0': {'best_comb': 'dg_084_h<+>dg_087_w<+>dg_095_w<+>dg_098_w<+>dg_099_w', 'best_sheet': [678, 528], 'best_res': {'re_qty': [1275, 440, 5794, 4145, 690], 'ups': [26, 13, 112, 77, 22], 'pds': [50.0, 34.0, 52.0, 54.0, 32.0], 'n_rows': [13, 13, 14, 11, 11], 'n_cols': [2, 1, 8, 7, 2]}, 'max_pds': 54.0, 'min_tot_area': 19331136.0}, 'b1': {'best_comb': 'dg_093_w<+>dg_094_w', 'best_sheet': [522, 328], 'best_res': {'re_qty': [10638, 7934], 'ups': [88, 63], 'pds': [121.0, 126.0], 'n_rows': [8, 9], 'n_cols': [11, 7]}, 'max_pds': 126.0, 'min_tot_area': 21573216.0}}
 
-  if metric<best_metric:
-    best_metric = metric
-    best_index = batch_name
+    if break_flag == 1:
+      continue
 
-  print(f'metric for {batch_name} = {metric}; current best metric = {best_metric}, current best batch = {best_index}')  
+    #计算当前batch的指标, 更新最优指标
+    res_batch = res_detail_3_2[batch_name]
+    # 'batch_5': {
+    # 'b0': {'best_comb': 'dg_084_w<+>dg_086_h', 'best_sheet': [678, 528], 'best_res': {'n_rows': [7, 8], 'n_cols': [3, 14], 'ups': array([ 21, 112]), 'pds': [61.0, 91.0]}, 'max_pds': 91.0, 'min_tot_area': 32576544.0}, 
+    # 'b1': {'best_comb': 'dg_087_w<+>dg_088_w', 'best_sheet': [678, 528], 'best_res': {'n_rows': [13, 8], 'n_cols': [1, 14], 'ups': array([ 13, 112]), 'pds': [34.0, 99.0]}, 'max_pds': 99.0, 'min_tot_area': 35440416.0}
+    # }
+    metric = 0
+    # temp_metric=0
+    for k,v in res_batch.items():
+      #考虑pds和sheet_weight
+      # sheet = v['best_sheet']
+      metric += v['min_tot_area']
+      # print(f'temp_metric={temp_metric}, metric={metric}')  
+    #再考虑版数和pds之间的权衡
+    add_metric = len(res_batch)*add_pds_per_sheet
+    metric += add_metric
+    res_metric_3_2[batch_name] = metric
 
-# print('-'*50)
-# print(res_detail_3_2)
-# print('-'*50)
-# print(res_metric_3_2)
+    if metric<best_metric:
+      best_metric = metric
+      best_index = batch_name
+      best_batch = batch      
+      best_res = res_batch
+
+    print(f'metric for {batch_name} = {metric}; current best metric = {best_metric}, current best batch = {best_index}')  
+
+  # print('-'*50)
+  # print(res_detail_3_2)
+  # print('-'*50)
+  # print(res_metric_3_2)
+  #---------------------------------------------------------------------------------------------------------------------------
+
+  #判断是否停止
+  agg_compute_seconds = (datetime.now()-start_time).seconds
+  print(f"agg_compute_seconds = {agg_compute_seconds} seconds")
+  if agg_compute_seconds>=algo_time_limit: #停止条件1 
+    print(f"computed for {len(old_batches+batches)}/{len(batches_list)} batches")
+    break
+
+  #更新历史数据
+  old_batches += batches
+  if len(old_batches)>=len(batches_list): #停止条件2
+    print(f"computed for ALL {len(old_batches)} batches")
+    break
 
 # COMMAND ----------
 
@@ -334,13 +313,15 @@ for i in range(len(batches_dict)):
 # COMMAND ----------
 
 #根据上一环节的结果得到最优batch的batch_name
-best_batch_name = min(res_metric_3_2, key=res_metric_3_2.get)
+# best_batch_name = min(res_metric_3_2, key=res_metric_3_2.get)
+best_batch_name = best_index
 print(f"best_batch_name = '{best_batch_name}'")
 
 # COMMAND ----------
 
-best_batch = batches_dict[best_batch_name]
-res = res_detail_3_2[best_batch_name]
+# best_batch = batches_dict[best_batch_name]
+# res = res_detail_3_2[best_batch_name]
+res = best_res
 print(best_batch)
 print(res)
 
@@ -539,10 +520,10 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
-# 0519 case
+# 0519 case - 269
 # https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/509730401455551/run/1
 
 # COMMAND ----------
 
-# 0319 case
+# 0319 case - 404
 # https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/389854053364790/run/1

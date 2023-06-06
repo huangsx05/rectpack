@@ -93,3 +93,8 @@ end_time = datetime.now()
 print(start_time)
 print(end_time)
 print('running time =', (end_time-start_time).seconds, 'seconds')
+
+# COMMAND ----------
+
+#0319 case: 1000000, 10 dg, 5 grp, 6620s, 9091 sample/min
+#0519 case: 1000, 13 dg, 5 grp, 6200s, 9.4 sample/min
