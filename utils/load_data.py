@@ -1,10 +1,10 @@
 import pandas as pd
-import yaml
+import json
 
 
 def load_config(config_file, params_dict={}):
-  with open(config_file) as fh:
-      config = yaml.load(fh, Loader=yaml.FullLoader)
+  with open(config_file, "r", encoding="utf-8") as fh:
+      config = json.load(fh)
   params_dict.update(config)
   return params_dict
 

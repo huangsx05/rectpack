@@ -1,91 +1,15 @@
 # Databricks notebook source
-#Revision Log
-#20230607: clone from branch 3_mcmd_dev
-#20230607: change to read user params from json instead of databricks widgets
-#20230607: change to read config from json instead of yaml
-#20230607: user directly input add_pds_per_sheet instead of n_color
-#20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
-#20230607: add post-process part to main notebook
-
-# COMMAND ----------
-
-from datetime import datetime
-import json
 import numpy as np
 import pandas as pd
+# import random
 import matplotlib.pyplot as plt
-from utils.tools import allocate_sku
-from utils.load_data import initialize_input_data, load_config
-from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
-from model.shared_solver import split_abc_ups
+# from datetime import timedelta, datetime
 
-# COMMAND ----------
-
-start_time = datetime.now()
-print(start_time)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC #### main
-
-# COMMAND ----------
-
-def main():
-  #inputs for main
-  user_params_path = "../config/user_params.json"
-  input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
-  filter_Color_Group = [] #空代表不筛选，全部计算
-  #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
-  config_path = f"../config/config.json"
-
-  #get user inputs
-  with open(user_params_path, "r", encoding="utf-8") as f:
-    user_params = json.load(f)
-  batching_type = user_params["batching_type"]
-  n_abc = user_params["n_abc"]  
-  n_abc = int(n_abc)  
-  add_pds_per_sheet = user_params["add_pds_per_sheet"]
-  add_pds_per_sheet = int(add_pds_per_sheet)
-  request_type = user_params["request_type"]  
-  sheet_size_list = user_params["sheet_size_list"]
-  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_size_list] #严格按照纸张从大到小排序
-
-  #get and update configs
-  params_dict = load_config(config_path)[batching_type]
-  params_dict.update({'user_params':{'add_pds_per_sheet':add_pds_per_sheet,
-                                     'batching_type':batching_type,
-                                     'n_abc':n_abc,
-                                     'request_type':request_type,
-                                     'sheet_size_list':sheet_size_list,
-                                     }})
-  print(params_dict)
-
-  #jobs input
-  df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
-
-  #main
-  if batching_type=='1_OCOD':
-    pass
-  elif batching_type=='2_OCMD':
-    pass
-  elif batching_type=='3_MCMD_Seperater':  
-    from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
-    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(params_dict, df, df_1)
-  elif batching_type=='4_MCMD_No_Seperater':
-    pass
-  print("done")
-  return df, df_1, params_dict, best_index, best_batch, best_res
-
-if __name__ == "__main__":
-  df, df_3, params_dict, best_index, best_batch, best_res = main()
-
-# COMMAND ----------
-
-end_time = datetime.now()
-print(start_time)
-print(end_time)
-print('running time =', (end_time-start_time).seconds, 'seconds')
+# from utils.load_data import load_config, load_and_clean_data, agg_to_get_dg_level_df, initialize_input_data, initialize_dg_level_results, initialize_sku_level_results
+# from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
+# # from utils.postprocess import prepare_dg_level_results, prepare_sku_level_results
+# from utils.tools import allocate_sku, get_all_dg_combinations_with_orientation
+# from model.shared_solver import get_batches_with_filter, iterate_to_solve_min_total_sheet_area, split_abc_ups
 
 # COMMAND ----------
 
@@ -105,16 +29,7 @@ print(f"best_batch_name = '{best_batch_name}'")
 # res = res_detail_3_2[best_batch_name]
 res = best_res
 print(best_batch)
-print(res) 
-
-# COMMAND ----------
-
-params_dict
-
-# COMMAND ----------
-
-ink_seperator_width = params_dict["business_params"]["ink_seperator_width"]
-ink_seperator_width
+print(res)
 
 # COMMAND ----------
 
@@ -185,7 +100,7 @@ display(df_3_3)
 
 # COMMAND ----------
 
-n_abc = params_dict["user_params"]["n_abc"]
+best_batch
 
 # COMMAND ----------
 
@@ -244,20 +159,14 @@ display(df_3_3_res)
 
 # COMMAND ----------
 
+print(best_batch)
+print()
+print(res)
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC #### 1.4 Prepare Results
-
-# COMMAND ----------
-
-from utils.load_data import initialize_dg_level_results, initialize_sku_level_results
-
-# COMMAND ----------
-
-#outputs
-df_res = initialize_dg_level_results(df) #初始化和PPC结果比较的results data - 同时也是Files_to_ESKO的file-1
-display(df_res)
-res_file_3 = initialize_sku_level_results(df) #初始化结果文件Files_to_ESKO的file-3
-display(res_file_3)
 
 # COMMAND ----------
 
@@ -306,9 +215,21 @@ df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).reset_index()
 metrics_3_3 = np.sum(df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).values)
 # metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'weighted_sku_pds':'max'}).values)
 n_batch = df_res['batch_id'].nunique()
-print(f'sum_pds = {metrics_3_3+params_dict["user_params"]["add_pds_per_sheet"]*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
+print(f'sum_pds = {metrics_3_3+7*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
 
 # COMMAND ----------
 
-#0319 case: 1000000, 10 dg, 5 grp, 6620s, 9091 sample/min
-#0519 case: 1000, 13 dg, 5 grp, 6200s, 9.4 sample/min
+end_time = datetime.now()
+print(start_time)
+print(end_time)
+print('running time =', (end_time-start_time).seconds, 'seconds')
+
+# COMMAND ----------
+
+# 0519 case - 269
+# https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/509730401455551/run/1
+
+# COMMAND ----------
+
+# 0319 case - 404
+# https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/389854053364790/run/1
