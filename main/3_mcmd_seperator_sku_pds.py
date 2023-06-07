@@ -71,8 +71,8 @@ n_abc = params_dict['user_params']['n_abc']
 
 #inputs
 df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
-# print(f"input data before data cleaning:")
-# display(df_raw) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
+print(f"input data before data cleaning:")
+display(df_raw) #源数据，未经任何代码处理。须在Excel中填充缺失值和去空格（用下划线代替）
 print(f"input data after data cleaning:")
 display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
 print(f"aggregated input data at dg level:")
@@ -304,6 +304,10 @@ while True: #时限未到
   if len(old_batches)>=len(batches_list): #停止条件2
     print(f"computed for ALL {len(old_batches)} batches")
     break
+
+# COMMAND ----------
+
+#original- 2.09 minutes
 
 # COMMAND ----------
 
