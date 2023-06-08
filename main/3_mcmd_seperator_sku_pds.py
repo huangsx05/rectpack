@@ -138,9 +138,9 @@ batches_list = get_batches_by_sampling(df_3, params_dict, n_color_limit)
 
 #sample batch 输入
 
-# batches_list = [
-# {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']},
-# ]
+batches_list = [
+{'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']},
+]
 
 # ppc_batch = [
 # {'b0':['dg_01','dg_02','dg_03','dg_04'],
@@ -150,14 +150,14 @@ batches_list = get_batches_by_sampling(df_3, params_dict, n_color_limit)
 #  'b4':['dg_12','dg_13'] } #ppc solution - 0519
 # ]
 
-ppc_batch = [
-{'b0':['dg_084','dg_086'],
- 'b1':['dg_087','dg_088'],
- 'b2':['dg_091','dg_093'],
- 'b3':['dg_094','dg_095','dg_098','dg_099']
- } #ppc solution - 0419
-]
-batches_list = ppc_batch+batches_list
+# ppc_batch = [
+# {'b0':['dg_084','dg_086'],
+#  'b1':['dg_087','dg_088'],
+#  'b2':['dg_091','dg_093'],
+#  'b3':['dg_094','dg_095','dg_098','dg_099']
+#  } #ppc solution - 0419
+# ]
+# batches_list = ppc_batch+batches_list
 
 old_batches = [
   ]
@@ -539,10 +539,21 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
-# 0519 case
+# 0519 case - sku_qty (OLD)
+# branch: 3_mcmd_sku_pds
 # https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/509730401455551/run/1
+
+# COMMAND ----------
+
+# 0519 case - re_qty (10+sku_qty)
+# branch: 3_mcmd_sku_pds
+# https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/73504466438001/run/1
 
 # COMMAND ----------
 
 # 0319 case
 # https://adb-8939684233531805.5.azuredatabricks.net/?o=8939684233531805#job/389854053364790/run/1
+
+# COMMAND ----------
+
+
