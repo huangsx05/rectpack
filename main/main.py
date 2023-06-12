@@ -83,10 +83,6 @@ if __name__ == "__main__":
 
 # COMMAND ----------
 
-from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
-
-# COMMAND ----------
-
 end_time = datetime.now()
 print(start_time)
 print(end_time)
@@ -95,6 +91,7 @@ print('running time =', (end_time-start_time).seconds, 'seconds')
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC 以下仅为结果展示部分
 # MAGIC #### Plot for the best batch
 
 # COMMAND ----------
@@ -317,3 +314,7 @@ print(f'sum_pds = {metrics_3_3+params_dict["user_params"]["add_pds_per_sheet"]*n
 
 #0319 case: 1000000, 10 dg, 5 grp, 6620s, 9091 sample/min
 #0519 case: 1000, 13 dg, 5 grp, 6200s, 9.4 sample/min
+
+# COMMAND ----------
+
+
