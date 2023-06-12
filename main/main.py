@@ -83,6 +83,10 @@ if __name__ == "__main__":
 
 # COMMAND ----------
 
+from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
+
+# COMMAND ----------
+
 end_time = datetime.now()
 print(start_time)
 print(end_time)
