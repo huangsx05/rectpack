@@ -66,6 +66,7 @@ def main():
   df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
 
   #main
+  #---------------------------------------------------------------------------------------------------------
   if batching_type=='1_OCOD':
     pass
   elif batching_type=='2_OCMD':
@@ -75,6 +76,7 @@ def main():
     best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(params_dict, df, df_1)
   elif batching_type=='4_MCMD_No_Seperater':
     pass
+  #---------------------------------------------------------------------------------------------------------  
   print("done")
   return df, df_1, params_dict, best_index, best_batch, best_res
 
