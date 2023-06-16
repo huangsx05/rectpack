@@ -16,7 +16,7 @@ def iterate_to_get_best_n_cols_allocation(dg_id,label_w_list, n_cols_search_lowe
   遍历所有情况获得columns分配的最优解
   """
   sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
-  sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
+  sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
 
   min_pds = 1e12 #优化目标
   n_cols = [0]*len(label_w_list)
@@ -216,7 +216,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
   采用给予初始解和tolerance遍历的方法
   """
   can_layout = True
-  ink_seperator_width = params_dict['business_params']['ink_seperator_width']
+  ink_seperator_width = params_dict['user_params']['ink_seperator_width']
 
   #基本信息
   n_dg = len(dg_id)

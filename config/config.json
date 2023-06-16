@@ -1,25 +1,6 @@
 {
   "3_MCMD_Seperater": {
     "business_params": {
-      "criteria": {
-        "678<+>528": {
-          "pds": 80,
-          "internal_date": 3,
-          "weight": 1
-        },
-        "582<+>482": {
-          "pds": 80,
-          "internal_date": 3,
-          "weight": 1
-        }, 
-        "522<+>328": {
-          "pds": 100,
-          "internal_date": 3,
-          "weight": 0.5
-        }
-      },
-      "ink_seperator_width": 30,                                  
-      "n_color_limit": 5                        
     },  
     "algo_params": {
       "criteria_check": 0,

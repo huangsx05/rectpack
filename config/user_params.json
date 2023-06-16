@@ -1,7 +1,22 @@
 {
+  "request_type": "1_Batching_Stepping",   
   "batching_type": "3_MCMD_Seperater", 
-  "n_abc": 1, 
   "add_pds_per_sheet": 7, 
-  "request_type": "1_Batching_Stepping", 
-  "sheet_size_list": [[678, 528], [582, 482], [522, 328]]
-  }
+  "add_pds_per_ink_seperator": 2,   
+  "n_abc": 1,   
+  "sheets": {
+    "678<+>528": {
+      "n_color_limit_with_seperater": 5,
+      "n_color_limit_no_seperater": 10,
+      "weight": 1
+    },
+    "578<+>478": {
+      "n_color_limit_with_seperater": 5,
+      "n_color_limit_no_seperater": 9,
+      "weight": 1
+    }
+  },  
+  "min_single_col_width": 25,
+  "ink_seperator_width": 30,  
+  "internal_days_tolerance": 4
+}

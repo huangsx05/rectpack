@@ -2,6 +2,30 @@ import pandas as pd
 import json
 
 
+def load_user_params(user_params_path):
+  with open(user_params_path, "r", encoding="utf-8") as f:
+    user_params = json.load(f)  
+
+  #考虑：如果可以直接判断某个sheet_size没有用，可以在这里排除
+  sheet_size_list = [k.split('<+>') for k in user_params["sheets"].keys()]
+  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_size_list] #严格按照纸张从大到小排序
+  user_params['sheet_size_list'] = sheet_size_list
+
+  batching_type = user_params["batching_type"]
+  if batching_type=='3_MCMD_Seperater':
+    for k,v in user_params['sheets'].items():
+      v['n_color_limit'] = v['n_color_limit_with_seperater']
+      del v['n_color_limit_with_seperater']
+      del v['n_color_limit_no_seperater']      
+  elif batching_type=='4_MCMD_No_Seperater':
+    for k,v in user_params['sheets'].items():
+      v['n_color_limit'] = v['n_color_limit_no_seperater']
+      del v['n_color_limit_with_seperater']
+      del v['n_color_limit_no_seperater']
+
+  return user_params
+
+
 def load_config(config_file, params_dict={}):
   with open(config_file, "r", encoding="utf-8") as fh:
       config = json.load(fh)

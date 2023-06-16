@@ -7,6 +7,8 @@
 #20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
 #20230607: add post-process part to main notebook
 #committed
+#20230615: adjust user_params and config format according to user inputs
+#20230615: 
 
 # COMMAND ----------
 
@@ -16,7 +18,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from utils.tools import allocate_sku
-from utils.load_data import initialize_input_data, load_config
+from utils.load_data import load_user_params, load_config, initialize_input_data
 from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
 from model.shared_solver import split_abc_ups
 
@@ -41,25 +43,13 @@ def main():
   config_path = f"../config/config.json"
 
   #get user inputs
-  with open(user_params_path, "r", encoding="utf-8") as f:
-    user_params = json.load(f)
+  user_params = load_user_params(user_params_path)
   batching_type = user_params["batching_type"]
-  n_abc = user_params["n_abc"]  
-  n_abc = int(n_abc)  
-  add_pds_per_sheet = user_params["add_pds_per_sheet"]
-  add_pds_per_sheet = int(add_pds_per_sheet)
-  request_type = user_params["request_type"]  
-  sheet_size_list = user_params["sheet_size_list"]
-  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_size_list] #严格按照纸张从大到小排序
+  print(f"batching_type={batching_type}")  
 
   #get and update configs
   params_dict = load_config(config_path)[batching_type]
-  params_dict.update({'user_params':{'add_pds_per_sheet':add_pds_per_sheet,
-                                     'batching_type':batching_type,
-                                     'n_abc':n_abc,
-                                     'request_type':request_type,
-                                     'sheet_size_list':sheet_size_list,
-                                     }})
+  params_dict['user_params'] = user_params
   print(params_dict)
 
   #jobs input
@@ -82,10 +72,6 @@ def main():
 
 if __name__ == "__main__":
   df, df_3, params_dict, best_index, best_batch, best_res = main()
-
-# COMMAND ----------
-
-from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
 
 # COMMAND ----------
 
@@ -120,7 +106,7 @@ params_dict
 
 # COMMAND ----------
 
-ink_seperator_width = params_dict["business_params"]["ink_seperator_width"]
+ink_seperator_width = params_dict["user_params"]["ink_seperator_width"]
 ink_seperator_width
 
 # COMMAND ----------
@@ -319,3 +305,7 @@ print(f'sum_pds = {metrics_3_3+params_dict["user_params"]["add_pds_per_sheet"]*n
 
 #0319 case: 1000000, 10 dg, 5 grp, 6620s, 9091 sample/min
 #0519 case: 1000, 13 dg, 5 grp, 6200s, 9.4 sample/min
+
+# COMMAND ----------
+
+

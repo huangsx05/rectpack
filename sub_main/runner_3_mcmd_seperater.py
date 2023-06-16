@@ -1,4 +1,3 @@
-# Databricks notebook source
 import numpy as np
 import pandas as pd
 import random
@@ -17,12 +16,11 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   # 当前notebook会用到的params，其他的会再调用函数中直接传入params_dict
   add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']  
   algo_time_limit = params_dict['algo_params']['algo_time_limit']
-  ink_seperator_width = params_dict['business_params']['ink_seperator_width']
+  ink_seperator_width = params_dict['user_params']['ink_seperator_width']
   n_abc = params_dict['user_params']['n_abc']
   n_abc = int(n_abc)  
-  n_color_limit = params_dict['business_params']['n_color_limit']
-  # n_color = int(n_color)
-  # sample_batch = params_dict['algo_params']['sample_batch'] #true/false  
+  n_color_limit_list = [v['n_color_limit'] for v in params_dict['user_params']['sheets'].values()]
+  n_color_limit = np.max(n_color_limit_list) 
   sample_batch_num = params_dict['algo_params']['sample_batch_num'] #考虑做成动态调整,并考虑在时间允许的范围内loop 
 
   #准备sku level的dict
@@ -45,10 +43,10 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   # print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
   batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)  
   # #sample batch 输入
-  # batches_list = [
-  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
-  # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
-  # ]
+  batches_list = [
+  {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
+  # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
+  ]
   # ppc_batch = [
   # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
   # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution - 0419
@@ -146,7 +144,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
                                                                                         ) ###--->>>
         max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
         sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
-        sheet_weight = params_dict['business_params']['criteria'][sheet_name]['weight']
+        sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
         temp_sub_batch_metric += max_pds*sheet_weight
         # print(f'temp_sub_batch_metric={temp_sub_batch_metric}, min_tot_area={min_tot_area}')  
 

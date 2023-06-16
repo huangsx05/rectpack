@@ -133,7 +133,7 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
   """
   mode = params_dict['algo_params']['layout_mode']
   sheet_size_list = params_dict['user_params']['sheet_size_list']
-  criteria_dict = params_dict['business_params']['criteria']
+  criteria_dict = params_dict['user_params']['sheets']
 
   min_tot_area = 1e12 #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积   
   best_sheet = 'dummy'
@@ -145,6 +145,10 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     #get sheet_weight
     sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
     sheet_weight = criteria_dict[sheet_name]['weight']
+    n_color_limit = criteria_dict[sheet_name]['n_color_limit']
+    if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
+        print(f'ERROR: nunique_color > {n_color_limit}, skip this case for {sheet_name}')
+        continue
 
     if mode=='one_dg_one_column': #for mcmd中离
       #这里的pds_list应该是基于sku颗粒度判断的结果
@@ -187,7 +191,7 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
   遍历所有dg_rotation_comb和sheet_size，选择总面积最小的comb+sheet_size的组合
   该函数对于不同的mode完全相同，区别仅在于mode的输入
   """
-  criteria_dict = params_dict['business_params']['criteria']
+  criteria_dict = params_dict['user_params']['sheets']
   # ink_seperator_width = params_dict['business_params']['ink_seperator_width']
   # mode = params_dict['algo_params']['layout_mode']
   # layout_tolerance = params_dict['algo_params']['layout_tolerance']
