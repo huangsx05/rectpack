@@ -56,8 +56,8 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_count = 0 #已取样数
   n_current = 0 #已计算数
 
-  res_metric_3_2 = {}
-  res_detail_3_2 = {}
+  # res_metric_3_2 = {}
+  # res_detail_3_2 = {}
   best_metric = 1e12
   best_index = 0 #batch name
   best_batch = []
@@ -85,7 +85,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
     #遍历batches找最优batch
     best_index, best_batch, best_res = iterate_to_find_best_batch(n_current, n_count, df_3,
                                                                   params_dict, batches_dict, dg_sku_qty_dict, 
-                                                                  res_detail_3_2, res_metric_3_2,
+                                                                  # res_detail_3_2, res_metric_3_2,
                                                                   best_metric)
     # print('-'*50)
     # print(res_detail_3_2)

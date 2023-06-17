@@ -6,9 +6,10 @@
 #20230607: user directly input add_pds_per_sheet instead of n_color
 #20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
 #20230607: add post-process part to main notebook
-#committed
 #20230615: adjust user_params and config format according to user inputs
 #20230616: successful 0519 rerun after adjusting configs
+#20230617: move iterate_to_find_best_batch to shared_solver
+#20230617: only keep best batch results
 
 # COMMAND ----------
 

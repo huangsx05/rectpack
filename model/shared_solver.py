@@ -199,7 +199,8 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
 
 def iterate_to_find_best_batch(n_current, n_count, df_3,
                                params_dict, batches_dict, dg_sku_qty_dict, 
-                               res_detail_3_2, res_metric_3_2,
+                              #  res_detail_3_2, 
+                              #  res_metric_3_2,
                                best_metric
                                ):
   # 当前函数会用到的params
@@ -212,7 +213,7 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
     break_flag = 0 #用于控制结果不可能更优时退出当前batch
     #获得batch
     batch_name = 'batch_'+str(n_current)
-    res_detail_3_2[batch_name] = {}
+    res_batch = {}
     batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
     print(f'{n_current}/{n_count} - {batch}')
     n_current += 1
@@ -255,10 +256,8 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
 
       #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
       #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
-      best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(#sheet_size_list, 
-                                                                                      comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
+      best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
                                                                                       dg_sku_qty_dict, params_dict
-                                                                                      #  check_criteria=False
                                                                                       ) ###--->>>
       max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
       sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
@@ -276,7 +275,7 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
 
       #sub_batch结果添加至res_3_2字典
       # batch_the_pds = np.ceil(np.sum(res['re_qty'])/np.sum(res['ups']))
-      res_detail_3_2[batch_name][batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 
+      res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 
                                               # 'batch_the_pds':batch_the_pds, 
                                               'min_tot_area':min_tot_area}
       #{'b0': {'best_comb': 'dg_084_h<+>dg_087_w<+>dg_095_w<+>dg_098_w<+>dg_099_w', 'best_sheet': [678, 528], 'best_res': {'re_qty': [1275, 440, 5794, 4145, 690], 'ups': [26, 13, 112, 77, 22], 'pds': [50.0, 34.0, 52.0, 54.0, 32.0], 'n_rows': [13, 13, 14, 11, 11], 'n_cols': [2, 1, 8, 7, 2]}, 'max_pds': 54.0, 'min_tot_area': 19331136.0}, 'b1': {'best_comb': 'dg_093_w<+>dg_094_w', 'best_sheet': [522, 328], 'best_res': {'re_qty': [10638, 7934], 'ups': [88, 63], 'pds': [121.0, 126.0], 'n_rows': [8, 9], 'n_cols': [11, 7]}, 'max_pds': 126.0, 'min_tot_area': 21573216.0}}
@@ -285,7 +284,7 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
       continue
 
     #计算当前batch的指标, 更新最优指标
-    res_batch = res_detail_3_2[batch_name]
+    # res_batch = res_detail_3_2[batch_name]
     # 'batch_5': {
     # 'b0': {'best_comb': 'dg_084_w<+>dg_086_h', 'best_sheet': [678, 528], 'best_res': {'n_rows': [7, 8], 'n_cols': [3, 14], 'ups': array([ 21, 112]), 'pds': [61.0, 91.0]}, 'max_pds': 91.0, 'min_tot_area': 32576544.0}, 
     # 'b1': {'best_comb': 'dg_087_w<+>dg_088_w', 'best_sheet': [678, 528], 'best_res': {'n_rows': [13, 8], 'n_cols': [1, 14], 'ups': array([ 13, 112]), 'pds': [34.0, 99.0]}, 'max_pds': 99.0, 'min_tot_area': 35440416.0}
@@ -300,7 +299,7 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
     #再考虑版数和pds之间的权衡
     add_metric = len(res_batch)*add_pds_per_sheet
     metric += add_metric
-    res_metric_3_2[batch_name] = metric
+    # res_metric_3_2[batch_name] = metric
 
     if metric<best_metric:
       best_metric = metric
