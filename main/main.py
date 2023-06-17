@@ -8,7 +8,7 @@
 #20230607: add post-process part to main notebook
 #committed
 #20230615: adjust user_params and config format according to user inputs
-#20230615: 
+#20230616: successful 0519 rerun after adjusting configs
 
 # COMMAND ----------
 
