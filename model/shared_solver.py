@@ -197,11 +197,11 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
   # print(f'best_comb={best_comb}, best_sheet={best_sheet}, best_res={best_res}, min_tot_area={min_tot_area}')
   return best_comb, best_sheet, best_res, min_tot_area#, best_sku_pds, df_sku_res
 
-def iterate_to_find_best_batch(n_current, n_count, df_3,
-                               params_dict, batches_dict, dg_sku_qty_dict, 
-                              #  res_detail_3_2, 
-                              #  res_metric_3_2,
-                               best_metric
+
+def iterate_to_find_best_batch(batches_dict, df_3,
+                               n_current, n_count, 
+                               best_metric, best_index, best_batch, best_res,
+                               params_dict, dg_sku_qty_dict
                                ):
   # 当前函数会用到的params
   add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
@@ -222,7 +222,7 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
     batch_revert = {}
     for k,v in batch.items():
       for i in v:
-        batch_revert[i] = k
+        batch_revert[i] = k #dg和batch的对应关系
     df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
     # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
 
@@ -308,7 +308,8 @@ def iterate_to_find_best_batch(n_current, n_count, df_3,
       best_res = res_batch
 
     print(f'metric for {batch_name} = {metric}; current best metric = {best_metric}, current best batch = {best_index}')
-    return best_index, best_batch, best_res
+
+  return n_current, best_metric, best_index, best_batch, best_res
 
 
 # ------ for SKU Allocation ------

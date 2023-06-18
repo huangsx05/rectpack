@@ -39,12 +39,12 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
   ###Batching
   # print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
-  # batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)  
+  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)  
   # #sample batch 输入
-  batches_list = [
-  {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
-  # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
-  ]
+  # batches_list = [
+  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
+  # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
+  # ]
   # ppc_batch = [
   # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
   # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution - 0419
@@ -56,8 +56,6 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_count = 0 #已取样数
   n_current = 0 #已计算数
 
-  # res_metric_3_2 = {}
-  # res_detail_3_2 = {}
   best_metric = 1e12
   best_index = 0 #batch name
   best_batch = []
@@ -83,10 +81,10 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
     #主计算部分 -----------------------------------------------------------------------------------------------------------------------
     #遍历batches找最优batch
-    best_index, best_batch, best_res = iterate_to_find_best_batch(n_current, n_count, df_3,
-                                                                  params_dict, batches_dict, dg_sku_qty_dict, 
-                                                                  # res_detail_3_2, res_metric_3_2,
-                                                                  best_metric)
+    n_current, best_metric, best_index, best_batch, best_res = iterate_to_find_best_batch(batches_dict, df_3,
+                                                                                          n_current, n_count, 
+                                                                                          best_metric, best_index, best_batch, best_res,
+                                                                                          params_dict, dg_sku_qty_dict)
     # print('-'*50)
     # print(res_detail_3_2)
     # print('-'*50)
