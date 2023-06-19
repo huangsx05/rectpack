@@ -3,8 +3,7 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
-
-# from utils.load_data import agg_to_get_dg_level_df
+from joblib import Parallel, delayed
 from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
 from model.shared_solver import get_batches_with_filter, iterate_to_find_best_batch, split_abc_ups
 
@@ -61,6 +60,8 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   best_batch = []
   best_res = {}
 
+  res_list = []
+
   while True: #时限未到
     #取样
     #remove batches in old_batches
@@ -77,19 +78,26 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
       batch_name = 'batch_'+str(n_count+i)
       batches_dict[batch_name] = batches[i]
     n_count += len(batches)
-    # print(batches_dict[list(batches_dict.keys())[0]]) #print a sample
 
-    #主计算部分 -----------------------------------------------------------------------------------------------------------------------
     #遍历batches找最优batch
-    n_current, best_metric, best_index, best_batch, best_res = iterate_to_find_best_batch(batches_dict, df_3,
-                                                                                          n_current, n_count, 
-                                                                                          best_metric, best_index, best_batch, best_res,
-                                                                                          params_dict, dg_sku_qty_dict)
-    # print('-'*50)
-    # print(res_detail_3_2)
-    # print('-'*50)
-    # print(res_metric_3_2)
-    #---------------------------------------------------------------------------------------------------------------------------
+    # Option 1 --------------------------------------------------------------------------------------------------------------------------
+    # n_current, best_metric, best_index, best_batch, best_res = iterate_to_find_best_batch(batches_dict, df_3,
+    #                                                                                       n_current, n_count, 
+    #                                                                                       best_metric, best_index, best_batch, best_res,
+    #                                                                                       params_dict, dg_sku_qty_dict)
+    #-------------------------------------------------------------------------------------------------------------------------------------
+
+    # Option 2 ===========================================================
+    from model.shared_solver import calulcate_one_batch
+    add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+    pre_n_count = n_count-len(batches)
+    for batch_i in range(pre_n_count, n_count):
+      print(batch_i)
+      temp_res = calulcate_one_batch(batches_dict, df_3, batch_i, 
+                                     best_metric, 
+                                     params_dict, dg_sku_qty_dict)
+      res_list.append(temp_res)
+    # ======================================================================
 
     #判断是否停止
     agg_compute_seconds = (datetime.now()-start_time).seconds
@@ -103,6 +111,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
     if len(old_batches)>=len(batches_list): #停止条件2
       print(f"computed for ALL {len(old_batches)} batches")
       break  
-    
+
+  print(res_list)  
   print(best_index, best_res)
   return best_index, best_batch, best_res

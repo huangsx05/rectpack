@@ -10,7 +10,7 @@
       "lower_sub_batch_num": 5,
       "layout_mode": "one_dg_one_column", 
       "layout_tolerance": 1,
-      "algo_time_limit": 300,
+      "algo_time_limit": 120,
       "timeout_limit": 600                                 
     }                 
   }
