@@ -11,7 +11,7 @@
       "layout_mode": "one_dg_one_column", 
       "layout_tolerance": 1,
       "n_jobs": 8,
-      "algo_time_limit": 60,
+      "algo_time_limit": 120,
       "timeout_limit": 600                                 
     }                 
   }

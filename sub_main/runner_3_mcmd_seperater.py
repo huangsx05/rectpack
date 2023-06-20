@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
 import random
-import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 from joblib import Parallel, delayed
-from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
-from model.shared_solver import get_batches_with_filter, iterate_to_find_best_batch, split_abc_ups
+from model.shared_solver import get_batches_with_filter, calculate_one_batch
 
 def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   start_time = datetime.now()
@@ -20,7 +18,9 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_color_limit = np.max(n_color_limit_list) #用于初筛batches
   internal_days_limit = params_dict['user_params']['internal_days']
   sample_batch_num = params_dict['algo_params']['sample_batch_num']
-
+  n_jobs = params_dict['algo_params']['n_jobs']
+  sample_batch_num = max(sample_batch_num, 2*n_jobs)
+  
   #准备sku level的dict
   dg_sku_qty_dict = {}
   for dg_name in df['dimension_group'].unique(): #在每一个dg内部分配做sku的ups分配
@@ -100,11 +100,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
     # # ======================================================================
 
     # Option 3 Parallel Computation ===========================================================
-    # https://blog.csdn.net/cauchy7203/article/details/107545490
-    from model.shared_solver import calculate_one_batch
-    add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
     pre_n_count = n_count-len(batches)
-    n_jobs = params_dict['algo_params']['n_jobs']
     temp_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, batches_dict, df_3, best_metric, 
                                                                     params_dict, dg_sku_qty_dict) for batch_i in range(pre_n_count, n_count))
     res_list.append(temp_res)
