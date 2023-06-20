@@ -43,14 +43,16 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
   ###Batching
   # print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
-  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit)  
+  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit)  #"heuristics_sub_batch_number", "lower_upper_bound"
   # #sample batch 输入
   # batches_list = [
-  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
+  # # {'b0': ['dg_01', 'dg_02'], 'b1': ['dg_03'], 'b2': ['dg_04'], 'b3': ['dg_05'], 'b4': ['dg_06', 'dg_07']} #0519 best
+  # # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']} #0519 best
   # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
   # ]
   # ppc_batch = [
-  # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
+  # {'b0': ['dg_01', 'dg_02'], 'b1': ['dg_03'], 'b2': ['dg_04'], 'b3': ['dg_05'], 'b4': ['dg_06', 'dg_07']}  #ppc solution - 0614 - 760
+  # # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
   # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution - 0419
   # ]
   # batches_list = ppc_batch+batches_list  
@@ -67,11 +69,12 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   best_batch = []
   best_res = {}
 
+  n_batch_max = len(batches_list)
   while True: #时限未到
     #取样
     #remove batches in old_batches
     print()
-    print(f'before dropping old batches, len(batches) = {len(batches_list)}')
+    # print(f'before dropping old batches, len(batches) = {len(batches_list)}')
     batches_list = [b for b in batches_list if b not in old_batches]
     print(f'after dropping old batches, len(batches) = {len(batches_list)}')
     sample_batch_num = np.min([sample_batch_num,len(batches_list)])
@@ -209,7 +212,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
     #更新历史数据
     old_batches += batches
-    if len(old_batches)>=len(batches_list): #停止条件2
+    if len(old_batches)>=n_batch_max: #停止条件2
       print(f"computed for ALL {len(old_batches)} batches")
       break  
     

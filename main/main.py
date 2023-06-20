@@ -62,7 +62,7 @@ def main():
   df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
   # display(df_raw)
   # display(df)  
-  display(df_1)    
+  # display(df_1)    
 
   #main
   if batching_type=='1_OCOD':

@@ -24,14 +24,14 @@
     },  
     "algo_params": {
       "criteria_check": 0,
-      "batch_generate_mode": "heuristics_sub_batch_number",
+      "batch_generate_mode": "lower_upper_bound",
       "sample_batch_num": 10,
-      "upper_sub_batch_num": 6,
-      "lower_sub_batch_num": 4,
+      "upper_sub_batch_num": 8,
+      "lower_sub_batch_num": 1,
       "layout_mode": "one_dg_one_column", 
       "layout_tolerance": 1,
-      "algo_time_limit": 60,
-      "timeout_limit": 600                                 
+      "algo_time_limit": 3600,
+      "timeout_limit": 3600                                 
     }                 
   }
 }

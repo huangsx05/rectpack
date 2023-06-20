@@ -56,7 +56,7 @@ def load_and_clean_data(df, input_file=None):
     df[c] = df[c].str.replace(' ', '_')
     df[c] = df[c].str.lower() 
   for c in int_cols:
-    print(c)
+    # print(c)
     df[c] = df[c].astype('int')    
   for c in double_cols:
     df[c] = df[c].astype('double')  
