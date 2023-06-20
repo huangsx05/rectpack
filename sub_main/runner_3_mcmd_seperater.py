@@ -20,6 +20,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_abc = params_dict['user_params']['n_abc']
   n_abc = int(n_abc)  
   n_color_limit = params_dict['business_params']['n_color_limit']
+  internal_days_limit = params_dict['business_params']['internal_days_limit']
   # n_color = int(n_color)
   # sample_batch = params_dict['algo_params']['sample_batch'] #true/false  
   sample_batch_num = params_dict['algo_params']['sample_batch_num'] #考虑做成动态调整,并考虑在时间允许的范围内loop 
@@ -42,7 +43,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
   ###Batching
   # print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
-  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)  
+  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit)  
   # #sample batch 输入
   # batches_list = [
   # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}

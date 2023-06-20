@@ -6,12 +6,13 @@ from model.mcmd_solver import get_n_cols_for_dg_comb_on_one_sheetsize
 
 # ------ for batching ------
 
-def get_batches_with_filter(df_3, params_dict, n_color_limit):
+def get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit):
   #get params
   # print(f'[{datetime.now()}] get_batches_by_sampling')    
   N = df_3['dg_id'].nunique() #dg数量
   dg_sorted_list = sorted(df_3['dg_id'].tolist())
   dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+  dg_wds_dict = dict(zip(df_3['dg_id'].tolist(), df_3['wds'].tolist()))  #for internal dates
   n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定sub_batch数量下限
 
   # sample_batch = params_dict['algo_params']['sample_batch'] #true/false
@@ -43,13 +44,12 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit):
     combination = sorted(combination,key = lambda i:len(i),reverse=True) #combination按照sub_batch长度排序,利于快速筛除颜色过多的batch
     #过滤掉sub_batch数量过少的batches    
     if len(combination)>=len_lower_limit:
-      #去重 
+      #过滤条件1：去重 
       v_set = set([str(c) for c in combination])  
       # v_set = set(combination)       
       if v_set not in v_set_list:
         v_set_list.append(v_set)      
         # combination_list.append(combination)
-        #去掉颜色数大于limit的sub_batch   
       # print(f'[{datetime.now()}] filter out n_color> batches')  
       # for combination in combination_list: #一个combination对应一个batch
         #将index变成dg_id
@@ -62,11 +62,14 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit):
           # batch.append(sub_batch)
         # if len(batch)>=max(n_grp_lower,lower_sub_batch_num): #sub_batch数量满足下限
         # if len(batch)==M:    
-        #去掉颜色数大于limit的sub_batch    
-        # for sub_batch in batch:
+          #过滤条件2：去掉颜色数大于limit的sub_batch    
           colors = [dg_cg_dict[s] for s in sub_batch]
+          wds_list = [dg_wds_dict[s] for s in sub_batch]
           if len(set(colors))>n_color_limit:      
             break
+          #过滤条件3：internal dates 
+          elif np.max(wds_list)-np.min(wds_list)>internal_days_limit:
+            break           
           else:
             # batch_dict = {}
             # for i in range(len(batch)):

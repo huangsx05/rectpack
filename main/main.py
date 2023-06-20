@@ -1,12 +1,8 @@
 # Databricks notebook source
 #Revision Log
-#20230607: clone from branch 3_mcmd_dev
-#20230607: change to read user params from json instead of databricks widgets
-#20230607: change to read config from json instead of yaml
-#20230607: user directly input add_pds_per_sheet instead of n_color
-#20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
-#20230607: add post-process part to main notebook
-#committed
+#original branch: 3_mcmd_dev
+#branch: 3_mcmd_dev_internalDate
+#20230620: dev for internal days limit
 
 # COMMAND ----------
 
@@ -35,7 +31,7 @@ print(start_time)
 def main():
   #inputs for main
   user_params_path = "../config/user_params.json"
-  input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
+  input_file = '../input/HTL_input_0614.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
   filter_Color_Group = [] #空代表不筛选，全部计算
   #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
   config_path = f"../config/config.json"
@@ -64,6 +60,9 @@ def main():
 
   #jobs input
   df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
+  # display(df_raw)
+  # display(df)  
+  display(df_1)    
 
   #main
   if batching_type=='1_OCOD':
@@ -240,6 +239,9 @@ for sub_batch_id in best_batch.keys(): #for b0, b1, ...
     df_i_list.append(df_i_sub)
 
 df_3_3_res = pd.concat(df_i_list).sort_values(['sub_batch_id','dimension_group','sku_id','re_qty'])
+df_3_3_res['job_number'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[0])
+df_3_3_res['sku_seq'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[1])
+df_3_3_res = df_3_3_res[['sub_batch_id', 'dimension_group', 'sku_id', 'job_number', 'sku_seq', 're_qty', 'sku_ups', 'sku_pds', 'Set A Ups']].sort_values(['sub_batch_id', 'dimension_group', 'sku_id'])
 print(f"sum_sku_ups = {np.sum(df_3_3_res['sku_ups'])}")
 print(f"max_sku_ups = {np.max(df_3_3_res['sku_ups'])}")
 display(df_3_3_res)
@@ -285,10 +287,10 @@ for k,v in best_batch.items():
       df_res.loc[df_res['DG']==v[i],'orient'] = 'vertical'
 
 #中离数
-df_res_agg = df_res.groupby(['batch_id'])['Color Group'].count().reset_index()
+df_res_agg = df_res.groupby(['batch_id'])['Color Group'].nunique().reset_index()
 n_seperator_dict = dict(zip(df_res_agg['batch_id'],df_res_agg['Color Group']))
 for k,v in n_seperator_dict.items():
-  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)
+  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)-1
 
 df_res = df_res.sort_values(['batch_id','Color Group','DG','Req_Qty'])
 display(df_res)

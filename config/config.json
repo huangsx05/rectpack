@@ -19,7 +19,8 @@
         }
       },
       "ink_seperator_width": 30,                                  
-      "n_color_limit": 5                        
+      "n_color_limit": 5,
+      "internal_days_limit": 4                        
     },  
     "algo_params": {
       "criteria_check": 0,
