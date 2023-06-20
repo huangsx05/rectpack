@@ -121,7 +121,7 @@ def allocate_sku(sku_qty_dict, n_ups):
 
 
 def get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict):
-  n_abc = params_dict['user_params']['n_abc']
+  n_abc = int(params_dict['user_params']['n_abc'])
   pds_list = [] #每一个dg的最大sku_pds
   for sub_dg_index in range(len(dg_id)): #在每一个dg内部分配做sku的ups分配
     sub_dg = dg_id[sub_dg_index] #dg_id

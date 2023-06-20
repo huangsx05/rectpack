@@ -111,8 +111,8 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     # print(f'sheet_size={sheet_size}')
     #get sheet_weight
     sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
-    sheet_weight = criteria_dict[sheet_name]['weight']
-    n_color_limit = criteria_dict[sheet_name]['n_color_limit']
+    sheet_weight = float(criteria_dict[sheet_name]['weight'])
+    n_color_limit = int(criteria_dict[sheet_name]['n_color_limit'])
     if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
         print(f'ERROR: nunique_color > {n_color_limit}, skip this case for {sheet_name}')
         continue
@@ -303,7 +303,7 @@ def calculate_one_batch(batch_i,batches_dict, df_3,
   break_flag = 0 #用于控制结果不可能更优时退出当前batch  
   
   # 当前函数会用到的params
-  add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+  add_pds_per_sheet = int(params_dict['user_params']['add_pds_per_sheet'])
 
   #获得batch
   batch_name = 'batch_'+str(batch_i)
@@ -342,7 +342,7 @@ def calculate_one_batch(batch_i,batches_dict, df_3,
 
     max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
     sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
-    sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
+    sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
     temp_sub_batch_metric += max_pds*sheet_weight
 
     if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好

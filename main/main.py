@@ -15,6 +15,7 @@
 #20230620: finished parallel computation
 #20230620: committed
 #20230620：simulated GPM inputs
+#20230620：resolved ui_inputs, pending jobs_inputs
 
 # COMMAND ----------
 
@@ -31,8 +32,8 @@ import pandas as pd
 #ui inputs
 user_params_path = "../config/ui_inputs.json"
 with open(user_params_path, "r", encoding="utf-8") as f:
-  user_params = json.load(f) 
-print(user_params)
+  input_params = json.load(f) 
+print(input_params)
 
 # COMMAND ----------
 
@@ -101,42 +102,13 @@ print(jobInfo_dict_list[0]) #print a sampel to view the results
 # COMMAND ----------
 
 #combine ui inputs and job inputs
-user_params["jobInfo"] = jobInfo_dict_list
-for k,v in user_params.items():
+input_params["jobInfo"] = jobInfo_dict_list
+for k,v in input_params.items():
   if k=='jobInfo':
     print(f"{k}:[{v[0]}]")
   else:
     print(f"{k}:{v}")
-# print(user_params)
-
-# COMMAND ----------
-
-到这
-
-# COMMAND ----------
-
-def load_user_params(user_params_path):
-  with open(user_params_path, "r", encoding="utf-8") as f:
-    user_params = json.load(f)  
-
-  #考虑：如果可以直接判断某个sheet_size没有用，可以在这里排除
-  sheet_size_list = [k.split('<+>') for k in user_params["sheets"].keys()]
-  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_size_list] #严格按照纸张从大到小排序
-  user_params['sheet_size_list'] = sheet_size_list
-
-  batching_type = user_params["batching_type"]
-  if batching_type=='3_MCMD_Seperater':
-    for k,v in user_params['sheets'].items():
-      v['n_color_limit'] = v['n_color_limit_with_seperater']
-      del v['n_color_limit_with_seperater']
-      del v['n_color_limit_no_seperater']      
-  elif batching_type=='4_MCMD_No_Seperater':
-    for k,v in user_params['sheets'].items():
-      v['n_color_limit'] = v['n_color_limit_no_seperater']
-      del v['n_color_limit_with_seperater']
-      del v['n_color_limit_no_seperater']
-
-  return user_params
+# print(input_params)
 
 # COMMAND ----------
 
@@ -151,27 +123,29 @@ print(start_time)
 
 import numpy as np
 from utils.tools import allocate_sku
-from utils.load_data import load_config, initialize_input_data
+from utils.load_data import load_user_params, load_config, initialize_input_data
 from model.shared_solver import split_abc_ups
 
 # COMMAND ----------
 
 def main():
- 
-  batching_type = user_params["batching_type"]
-  print(f"batching_type={batching_type}")  
-
   #get and update configs
+  user_params = load_user_params(input_params)  
+  batching_type = user_params["batching_type"]
+  print(f"batching_type={batching_type}")
+
   config_path = f"../config/config.json"  
   params_dict = load_config(config_path)[batching_type]
   params_dict['user_params'] = user_params
   print(params_dict)
 
   #jobs input
+  将input_params转换为jobs数据
   df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
 
   #main
   #---------------------------------------------------------------------------------------------------------
+
   if batching_type=='1_OCOD':
     pass
   elif batching_type=='2_OCMD':

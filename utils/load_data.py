@@ -1,6 +1,37 @@
 import pandas as pd
 import json
 
+
+def load_user_params(input_params):
+  user_params = {}
+  user_params['request_type'] = input_params['requestType']
+  user_params["batching_type"] = input_params['batchingType']
+  user_params["add_pds_per_sheet"] = input_params['setUpPerBatch']
+  user_params["n_abc"] = input_params['setOfPlates']
+  user_params["min_single_col_width"] = input_params['minWidthandLength']
+  user_params["ink_seperator_width"] = input_params['separatorWidth']
+  user_params["internal_days"] = input_params['internalDays']
+
+  #考虑：如果可以直接判断某个sheet_size没有用，可以在这里排除
+  sheet_input_list = input_params["filmSize"].split('/')
+  sheet_input_list = [i.split(',') for i in sheet_input_list]  
+  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_input_list] #严格按照纸张从大到小排序
+  user_params['sheet_size_list'] = sheet_size_list
+
+  user_params['sheets'] = {}
+  batching_type = user_params["batching_type"]
+  for i in sheet_input_list:
+    sheet_name = str(i[0])+'<+>'+str(i[1])
+    sheet_weight = i[4]    
+    if batching_type=='3_MCMD_Seperater':
+      n_color_limit = i[2]
+    elif batching_type=='4_MCMD_No_Seperater':
+      n_color_limit = i[3]      
+    user_params['sheets'][sheet_name] = {'n_color_limit':n_color_limit, 'weight':sheet_weight}
+
+  return user_params
+
+
 def load_config(config_file, params_dict={}):
   with open(config_file, "r", encoding="utf-8") as fh:
       config = json.load(fh)

@@ -16,7 +16,7 @@ def iterate_to_get_best_n_cols_allocation(dg_id,label_w_list, n_cols_search_lowe
   遍历所有情况获得columns分配的最优解
   """
   sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
-  sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
+  sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
 
   min_pds = 1e12 #优化目标
   n_cols = [0]*len(label_w_list)
@@ -216,7 +216,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
   采用给予初始解和tolerance遍历的方法
   """
   can_layout = True
-  ink_seperator_width = params_dict['user_params']['ink_seperator_width']
+  ink_seperator_width = int(params_dict['user_params']['ink_seperator_width'])
 
   #基本信息
   n_dg = len(dg_id)
@@ -254,7 +254,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
       n_cols = temp_n_cols
   # print(f'n_cols heuristics final solution = {n_cols}')
 
-  tolerance = params_dict['algo_params']['layout_tolerance']
+  tolerance = int(params_dict['algo_params']['layout_tolerance'])
   n_cols_search_upper = [np.min([int(n_cols[i]+tolerance),n_cols_upper_lim[i]]) for i in range(n_dg)] #不超过上限
   n_cols_search_lower = [int(np.max([i-tolerance,1])) for i in n_cols] #每个dg至少有1列
   n_cols_upper_lim = n_cols #初始解，不要被变量名误导，不是上限

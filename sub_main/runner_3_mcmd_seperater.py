@@ -10,15 +10,15 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   print(start_time)  
 
   # 当前notebook会用到的params，其他的会再调用函数中直接传入params_dict
-  algo_time_limit = params_dict['algo_params']['algo_time_limit']
-  ink_seperator_width = params_dict['user_params']['ink_seperator_width']
-  n_abc = params_dict['user_params']['n_abc']
+  algo_time_limit = int(params_dict['algo_params']['algo_time_limit'])
+  ink_seperator_width = int(params_dict['user_params']['ink_seperator_width'])
+  n_abc = int(params_dict['user_params']['n_abc'])
   n_abc = int(n_abc)  
-  n_color_limit_list = [v['n_color_limit'] for v in params_dict['user_params']['sheets'].values()]
+  n_color_limit_list = [int(v['n_color_limit']) for v in params_dict['user_params']['sheets'].values()]
   n_color_limit = np.max(n_color_limit_list) #用于初筛batches
-  internal_days_limit = params_dict['user_params']['internal_days']
-  sample_batch_num = params_dict['algo_params']['sample_batch_num']
-  n_jobs = params_dict['algo_params']['n_jobs']
+  internal_days_limit = int(params_dict['user_params']['internal_days'])
+  sample_batch_num = int(params_dict['algo_params']['sample_batch_num'])
+  n_jobs =int(params_dict['algo_params']['n_jobs'])
   sample_batch_num = max(sample_batch_num, 2*n_jobs)
   
   #准备sku level的dict
