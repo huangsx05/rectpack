@@ -11,6 +11,9 @@
 #20230617: move iterate_to_find_best_batch to shared_solver
 #20230617: only keep best batch results
 #20230620: dev for internal days limit
+#20230620: committed
+#20230620: finished parallel computation
+#20230620: committed
 
 # COMMAND ----------
 

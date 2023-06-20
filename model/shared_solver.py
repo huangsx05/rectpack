@@ -295,7 +295,7 @@ def iterate_to_find_best_batch(batches_dict, df_3,
   return n_current, best_metric, best_index, best_batch, best_res
 
 
-def calulcate_one_batch(batches_dict, df_3, batch_i,
+def calculate_one_batch(batch_i,batches_dict, df_3, 
                         best_metric,
                         params_dict, dg_sku_qty_dict):
   metric = 0

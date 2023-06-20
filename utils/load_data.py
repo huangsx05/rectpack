@@ -66,10 +66,13 @@ def load_and_clean_data(df, input_file=None):
     remove_space_dict[col] = col.replace(' ', '_').lower()
   df.rename(columns=remove_space_dict, inplace=True)
 
-  #处理缺失列
+  #临时性代码
   if 're_qty' not in df.columns:
-    print(f're_qty is missing, use re_qty=sku_qty')
-    df['re_qty'] = df['sku_quantity']
+    print(f're_qty is missing, use re_qty=sku_qty+10')
+    df['re_qty'] = df['sku_quantity']+10
+  if 'wds' not in df.columns:
+    print(f'wds is missing, use wds=1')
+    df['wds'] = 1    
 
   #数据格式标准化
   str_cols = ['color_group', 'dimension_group', 'header_variable_data|sku_value', 'item', 'job_number', 'rb']

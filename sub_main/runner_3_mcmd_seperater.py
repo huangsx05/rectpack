@@ -18,7 +18,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_abc = int(n_abc)  
   n_color_limit_list = [v['n_color_limit'] for v in params_dict['user_params']['sheets'].values()]
   n_color_limit = np.max(n_color_limit_list) #用于初筛batches
-  internal_days_limit = params_dict['business_params']['internal_days_limit']
+  internal_days_limit = params_dict['user_params']['internal_days']
   sample_batch_num = params_dict['algo_params']['sample_batch_num']
 
   #准备sku level的dict
@@ -89,23 +89,24 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
     #-------------------------------------------------------------------------------------------------------------------------------------
 
     # # Option 2 ===========================================================
-    # from model.shared_solver import calulcate_one_batch
+    # from model.shared_solver import calculate_one_batch
     # add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
     # pre_n_count = n_count-len(batches)
     # for batch_i in range(pre_n_count, n_count):
     #   print(batch_i)
-    #   best_metric, temp_res = calulcate_one_batch(batches_dict, df_3, batch_i, 
+    #   best_metric, temp_res = calculate_one_batch(batch_i, batches_dict, df_3, 
     #                                               best_metric, params_dict, dg_sku_qty_dict)
     #   res_list.append(temp_res)
     # # ======================================================================
 
     # Option 3 Parallel Computation ===========================================================
     # https://blog.csdn.net/cauchy7203/article/details/107545490
-    from model.shared_solver import calulcate_one_batch
+    from model.shared_solver import calculate_one_batch
     add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
     pre_n_count = n_count-len(batches)
-    temp_res = Parallel(n_jobs=2)(delayed(calulcate_one_batch)(batch_i, batches_dict, df_3, best_metric, 
-                                                               params_dict, dg_sku_qty_dict) for batch_i in range(pre_n_count, n_count))
+    n_jobs = params_dict['algo_params']['n_jobs']
+    temp_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, batches_dict, df_3, best_metric, 
+                                                                    params_dict, dg_sku_qty_dict) for batch_i in range(pre_n_count, n_count))
     res_list.append(temp_res)
     # ======================================================================    
 
@@ -122,6 +123,25 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
       print(f"computed for ALL {len(old_batches)} batches")
       break  
 
-  print(res_list)  
-  print(best_index, best_res)
+  #整理结果，找出最优batch
+  assessed_metrics = {}
+  res = {}
+  for i in range(len(res_list)):
+    for j in range(len(res_list[i])):  
+      assessed_metrics[list(res_list[i][j][1].keys())[0]] = res_list[i][j][0]
+      res[list(res_list[i][j][1].keys())[0]] = list(res_list[i][j][1].values())[0]['res']
+  print(f"assessed_metrics={assessed_metrics}")
+
+  best_index = min(assessed_metrics, key=assessed_metrics.get)
+  best_res = res[best_index]
+  print(f"best_index={best_index}")
+  print(f"best_res={best_res}")  
+
+  best_batch = {}
+  for k,v in best_res.items():
+    sub_dgs = v['best_comb'].split('<+>')
+    sub_dgs = [i[:-2] for i in sub_dgs] 
+    best_batch[k] = sub_dgs
+  print(f"bets_batch={best_batch}")
+
   return best_index, best_batch, best_res

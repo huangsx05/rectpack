@@ -5,12 +5,13 @@
     "algo_params": {
       "criteria_check": 0,
       "batch_generate_mode": "heuristics_sub_batch_number",
-      "sample_batch_num": 5,
+      "sample_batch_num": 8,
       "upper_sub_batch_num": 5,
       "lower_sub_batch_num": 5,
       "layout_mode": "one_dg_one_column", 
       "layout_tolerance": 1,
-      "algo_time_limit": 120,
+      "n_jobs": 8,
+      "algo_time_limit": 60,
       "timeout_limit": 600                                 
     }                 
   }
