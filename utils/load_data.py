@@ -1,10 +1,11 @@
 import pandas as pd
 import json
+import yaml
 
 
 def load_config(config_file, params_dict={}):
-  with open(config_file, "r", encoding="utf-8") as fh:
-      config = json.load(fh)
+  with open(config_file) as fh:
+      config = yaml.load(fh, Loader=yaml.FullLoader)
   params_dict.update(config)
   return params_dict
 
@@ -48,11 +49,10 @@ def load_and_clean_data(df, input_file=None):
     df['re_qty'] = df['sku_quantity']
 
   #数据格式标准化
-  str_cols = ['color_group', 'dimension_group', 'header_variable_data|sku_value', 'item', 'job_number', 'rb']
-  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 'sku_seq', 're_qty']
+  str_cols = ['color_group', 'dimension_group', 'header_variable_data|sku_value', 'item', 'job_number', 'rb', 'sku_seq']
+  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 're_qty']
   double_cols = ['overall_label_length', 'overall_label_width']
   for c in str_cols:
-    df[c] = df[c].astype('str')
     df[c] = df[c].str.replace(' ', '_')
     df[c] = df[c].str.lower() 
   for c in int_cols:

@@ -1,4 +1,3 @@
-# Databricks notebook source
 import numpy as np
 import pandas as pd
 import random
@@ -21,7 +20,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_abc = params_dict['user_params']['n_abc']
   n_abc = int(n_abc)  
   n_color_limit = params_dict['business_params']['n_color_limit']
-  n_color = int(n_color)
+  n_color_limit = int(n_color_limit)
   # sample_batch = params_dict['algo_params']['sample_batch'] #true/false  
   sample_batch_num = params_dict['algo_params']['sample_batch_num'] #考虑做成动态调整,并考虑在时间允许的范围内loop 
 

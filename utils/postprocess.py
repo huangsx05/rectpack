@@ -62,7 +62,10 @@ def prepare_sku_level_results(res_file_3, df_1_5):
   # display(df_temp)
   # display(res_file_3)
   for df_i in [df_temp, res_file_3]:
-    df_i['Sku Seq'] = df_i['Sku Seq'].astype('int')
+    try:
+      df_i['Sku Seq'] = df_i['Sku Seq'].astype('int')
+    except:
+      df_i['Sku Seq'] = df_i['Sku Seq'].astype('str')      
   res_file_3 = res_file_3.merge(df_temp, how='left', on=['Job Number','Sku Seq'])
   # display(res_file_3)
   sets = ['Set A Ups','Set B Ups','Set C Ups','Set D Ups','Set E Ups','Set F Ups','Set G Ups','Set H Ups']

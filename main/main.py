@@ -4,7 +4,7 @@ from utils.load_data import initialize_input_data, load_config, write_config
 def main():
   #inputs for main
   user_params_path = "../config/user_params.json"
-  input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
+  input_file = '../input/230620_HTL_input_sku_group.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', '230620_HTL_input_sku_group.csv'
   filter_Color_Group = [] #空代表不筛选，全部计算
   #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
   config_path = f"../config/config.json"
@@ -38,6 +38,9 @@ def main():
 
   #jobs input
   df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
+  display(df_raw)
+  display(df)
+  display(df_1)
 
   #main
   if batching_type=='1_OCOD':
