@@ -1,0 +1,10 @@
+{
+  "requestType":"1_Batching_Stepping",
+  "batchingType":"3_MCMD_Seperater",
+  "setUpPerBatch":"7",
+  "setOfPlates":"1",
+  "filmSize":"678,528,5,10,1/528,328,5,10,0.5",
+  "minWidthandLength":"25",
+  "separatorWidth":"30",
+  "internalDays":"4"
+}
