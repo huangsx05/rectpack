@@ -18,6 +18,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
   n_abc = int(n_abc)  
   n_color_limit_list = [v['n_color_limit'] for v in params_dict['user_params']['sheets'].values()]
   n_color_limit = np.max(n_color_limit_list) #用于初筛batches
+  internal_days_limit = params_dict['business_params']['internal_days_limit']
   sample_batch_num = params_dict['algo_params']['sample_batch_num']
 
   #准备sku level的dict
@@ -38,7 +39,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
   ###Batching
   # print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
-  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit)  
+  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit)  
   # #sample batch 输入
   # batches_list = [
   # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
@@ -87,17 +88,26 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
     #                                                                                       params_dict, dg_sku_qty_dict)
     #-------------------------------------------------------------------------------------------------------------------------------------
 
-    # Option 2 ===========================================================
+    # # Option 2 ===========================================================
+    # from model.shared_solver import calulcate_one_batch
+    # add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+    # pre_n_count = n_count-len(batches)
+    # for batch_i in range(pre_n_count, n_count):
+    #   print(batch_i)
+    #   best_metric, temp_res = calulcate_one_batch(batches_dict, df_3, batch_i, 
+    #                                               best_metric, params_dict, dg_sku_qty_dict)
+    #   res_list.append(temp_res)
+    # # ======================================================================
+
+    # Option 3 Parallel Computation ===========================================================
+    # https://blog.csdn.net/cauchy7203/article/details/107545490
     from model.shared_solver import calulcate_one_batch
     add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
     pre_n_count = n_count-len(batches)
-    for batch_i in range(pre_n_count, n_count):
-      print(batch_i)
-      temp_res = calulcate_one_batch(batches_dict, df_3, batch_i, 
-                                     best_metric, 
-                                     params_dict, dg_sku_qty_dict)
-      res_list.append(temp_res)
-    # ======================================================================
+    temp_res = Parallel(n_jobs=2)(delayed(calulcate_one_batch)(batch_i, batches_dict, df_3, best_metric, 
+                                                               params_dict, dg_sku_qty_dict) for batch_i in range(pre_n_count, n_count))
+    res_list.append(temp_res)
+    # ======================================================================    
 
     #判断是否停止
     agg_compute_seconds = (datetime.now()-start_time).seconds

@@ -10,6 +10,7 @@
 #20230616: successful 0519 rerun after adjusting configs
 #20230617: move iterate_to_find_best_batch to shared_solver
 #20230617: only keep best batch results
+#20230620: dev for internal days limit
 
 # COMMAND ----------
 
@@ -232,6 +233,9 @@ for sub_batch_id in best_batch.keys(): #for b0, b1, ...
     df_i_list.append(df_i_sub)
 
 df_3_3_res = pd.concat(df_i_list).sort_values(['sub_batch_id','dimension_group','sku_id','re_qty'])
+df_3_3_res['job_number'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[0])
+df_3_3_res['sku_seq'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[1])
+df_3_3_res = df_3_3_res[['sub_batch_id', 'dimension_group', 'sku_id', 'job_number', 'sku_seq', 're_qty', 'sku_ups', 'sku_pds', 'Set A Ups']].sort_values(['sub_batch_id', 'dimension_group', 'sku_id'])
 print(f"sum_sku_ups = {np.sum(df_3_3_res['sku_ups'])}")
 print(f"max_sku_ups = {np.max(df_3_3_res['sku_ups'])}")
 display(df_3_3_res)
@@ -277,10 +281,10 @@ for k,v in best_batch.items():
       df_res.loc[df_res['DG']==v[i],'orient'] = 'vertical'
 
 #中离数
-df_res_agg = df_res.groupby(['batch_id'])['Color Group'].count().reset_index()
+df_res_agg = df_res.groupby(['batch_id'])['Color Group'].nunique().reset_index()
 n_seperator_dict = dict(zip(df_res_agg['batch_id'],df_res_agg['Color Group']))
 for k,v in n_seperator_dict.items():
-  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)
+  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)-1
 
 df_res = df_res.sort_values(['batch_id','Color Group','DG','Req_Qty'])
 display(df_res)

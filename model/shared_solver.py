@@ -7,12 +7,13 @@ from model.mcmd_solver import get_n_cols_for_dg_comb_on_one_sheetsize
 
 # ------ for batching ------
 
-def get_batches_with_filter(df_3, params_dict, n_color_limit):
+def get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit):
   #get params
   # print(f'[{datetime.now()}] get_batches_by_sampling')    
   N = df_3['dg_id'].nunique() #dg数量
   dg_sorted_list = sorted(df_3['dg_id'].tolist())
   dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+  dg_wds_dict = dict(zip(df_3['dg_id'].tolist(), df_3['wds'].tolist()))  #for internal dates
   n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定sub_batch数量下限
 
   # sample_batch = params_dict['algo_params']['sample_batch'] #true/false
@@ -44,7 +45,7 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit):
     combination = sorted(combination,key = lambda i:len(i),reverse=True) #combination按照sub_batch长度排序,利于快速筛除颜色过多的batch
     #过滤掉sub_batch数量过少的batches    
     if len(combination)>=len_lower_limit:
-      #去重 
+      #过滤条件1：去重  
       v_set = set([str(c) for c in combination])  
       # v_set = set(combination)       
       if v_set not in v_set_list:
@@ -63,11 +64,15 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit):
           # batch.append(sub_batch)
         # if len(batch)>=max(n_grp_lower,lower_sub_batch_num): #sub_batch数量满足下限
         # if len(batch)==M:    
-        #去掉颜色数大于limit的sub_batch    
+        #过滤条件2：去掉颜色数大于limit的sub_batch  
         # for sub_batch in batch:
           colors = [dg_cg_dict[s] for s in sub_batch]
+          wds_list = [dg_wds_dict[s] for s in sub_batch]
           if len(set(colors))>n_color_limit:      
             break
+          #过滤条件3：internal dates 
+          elif np.max(wds_list)-np.min(wds_list)>internal_days_limit:
+            break 
           else:
             # batch_dict = {}
             # for i in range(len(batch)):
@@ -293,14 +298,15 @@ def iterate_to_find_best_batch(batches_dict, df_3,
 def calulcate_one_batch(batches_dict, df_3, batch_i,
                         best_metric,
                         params_dict, dg_sku_qty_dict):
+  metric = 0
+  res_batch = {}
+  break_flag = 0 #用于控制结果不可能更优时退出当前batch  
+  
   # 当前函数会用到的params
   add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
 
-  break_flag = 0 #用于控制结果不可能更优时退出当前batch
-
   #获得batch
   batch_name = 'batch_'+str(batch_i)
-  res_batch = {}
   batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
 
   #获得dg和sub_batch_id的对应关系
@@ -331,9 +337,9 @@ def calulcate_one_batch(batches_dict, df_3, batch_i,
 
     #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
     #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
-    best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
-                                                                                    dg_sku_qty_dict, params_dict
-                                                                                    ) ###--->>>
+    best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, 
+                                                                                     dg_id, cg_id, re_qty, dg_sku_qty_dict, params_dict)
+
     max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
     sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
     sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
@@ -347,8 +353,6 @@ def calulcate_one_batch(batches_dict, df_3, batch_i,
     res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 'min_tot_area':min_tot_area}
 
   #计算当前batch的指标, 更新最优指标
-  metric = 0
-  # temp_metric=0
   for k,v in res_batch.items():
     #考虑pds和sheet_weight
     metric += v['min_tot_area']
@@ -356,7 +360,10 @@ def calulcate_one_batch(batches_dict, df_3, batch_i,
   add_metric = len(res_batch)*add_pds_per_sheet
   metric += add_metric
 
-  return {batch_name:{'res':res_batch, 'metric':metric}}
+  if metric < best_metric:
+    best_metric = metric
+
+  return best_metric, {batch_name:{'res':res_batch, 'metric':metric}}
 
 
 # ------ for SKU Allocation ------

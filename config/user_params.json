@@ -18,5 +18,5 @@
   },  
   "min_single_col_width": 25,
   "ink_seperator_width": 30,  
-  "internal_days_tolerance": 4
+  "internal_days": 4
 }

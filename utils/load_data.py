@@ -48,7 +48,7 @@ def load_and_clean_data(df, input_file=None):
 
   cols = ['sku_id', 'color_group', 'dimension_group', 'fix_orientation', 'dg_id', 'cg_dg_id', 'job_number', 'item', 
           'overall_label_width', 'overall_label_length', 'sku_seq', 'rb', 'group_sku', 'group_nato',
-          'sku_quantity', 're_qty', 'header_variable_data|sku_value']
+          'sku_quantity', 're_qty', 'header_variable_data|sku_value', 'wds']
   
   #删除多于列
   drop_cols = []
@@ -73,7 +73,7 @@ def load_and_clean_data(df, input_file=None):
 
   #数据格式标准化
   str_cols = ['color_group', 'dimension_group', 'header_variable_data|sku_value', 'item', 'job_number', 'rb']
-  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 'sku_seq', 're_qty']
+  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 'sku_seq', 're_qty', 'wds']
   double_cols = ['overall_label_length', 'overall_label_width']
   for c in str_cols:
     df[c] = df[c].astype('str')
@@ -101,8 +101,8 @@ def load_and_clean_data(df, input_file=None):
 
 
 def agg_to_get_dg_level_df(sku_level_df):
-  cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length']
-  agg_dict = {'re_qty':'sum'}
+  cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length', 'wds']
+  agg_dict = {'re_qty':'sum', 'wds':'min'}
   for c in cols_to_first:
     agg_dict[c] = 'first'
   dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
