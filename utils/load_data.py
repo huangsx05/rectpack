@@ -32,6 +32,7 @@ def load_and_clean_data(df, input_file=None):
     if col.lower() not in cols:
       drop_cols.append(col)
   df.drop(columns=drop_cols, inplace=True)
+  print(f"drop_cols={drop_cols}")
 
   #删除全部为空的行
   df = df.dropna(how='all')    
