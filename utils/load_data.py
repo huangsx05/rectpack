@@ -16,7 +16,7 @@ def write_config(config_file, params_dict):
         yaml.dump(params_dict, stream=f, allow_unicode=True)
 
 
-def load_and_clean_data(df, input_file=None):
+def load_and_clean_data(df, input_file=None, sku_group=False):
   """
   :param input_file: '../input/HTL_input_0419.csv'
   """
@@ -26,6 +26,24 @@ def load_and_clean_data(df, input_file=None):
   cols = ['sku_id', 'color_group', 'dimension_group', 'fix_orientation', 'dg_id', 'cg_dg_id', 'job_number', 'item', 
           'overall_label_width', 'overall_label_length', 'sku_seq', 'rb', 'group_sku', 'group_nato',
           'sku_quantity', 're_qty', 'header_variable_data|sku_value']
+  
+  if sku_group==True:
+    #specifically for sku group
+    df.drop(columns=['HEADER_VARIABLE_DATA|SKU_VALUE','JOB_NUMBER'], inplace=True)
+    agg_dict = {'ITEM':'first', 
+                'OVERALL_LABEL_WIDTH':'first', 
+                'OVERALL_LABEL_LENGTH':'first', 
+                'SKU_QUANTITY':'sum', 
+                'Re_Qty':'sum',
+                'Color_Group':'first', 
+                'Group_SKU':'first', 
+                'Group_NATO':'first', 
+                'Fix_Orientation':'first', 
+                'Dimension_Group':'first',
+                'RB':'first'} 
+    df = df.groupby(['SKU_SEQ']).agg(agg_dict).reset_index()
+    df['HEADER_VARIABLE_DATA|SKU_VALUE'] = 'sku_group_dummy'
+    df['JOB_NUMBER'] = 'sku_group_dummy'
   
   #删除多于列
   drop_cols = []

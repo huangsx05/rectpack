@@ -93,7 +93,7 @@ display(df) #源数据，未经任何代码处理。须在Excel中填充缺失�
 # COMMAND ----------
 
 #clean intput data
-df = load_and_clean_data(df)
+df = load_and_clean_data(df, input_file, sku_group=True)
 display(df) #数据清洗后的，以sku为颗粒度的数据 - 整个计算的基础数据
 
 # COMMAND ----------
