@@ -45,6 +45,42 @@ def write_config(config_file, params_dict):
         yaml.dump(params_dict, stream=f, allow_unicode=True)
 
 
+def convert_jobs_input_into_df(jobs_dict_list):
+  job_number_df = pd.DataFrame(jobs_dict_list)
+  # # print(job_number_df)
+
+  # sku_df_list = []
+  # for i, row in job_number_df.iterrows():
+  #   job_number = row['jobNumber']
+  #   sku_info_list = row['skuInfo']
+  #   # print(sku_info_list)
+  #   # display(pd.DataFrame.from_dict(sku_info_list))
+  #   sku_df = pd.DataFrame.from_dict(sku_info_list)
+  #   sku_df['jobNumber'] = job_number
+  #   sku_df_list.append(sku_df)
+  # sku_df = pd.concat(sku_df_list)
+
+  df = job_number_df.drop(columns=['skuInfo'])
+  # df = job_df.merge(sku_df, how='left', on='jobNumber')#.sort_values(['jobNumber', 'skuSeq'])
+  use_dict = {'ITEM':'item', 
+                        'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
+                        'OVERALL_LABEL_LENGTH':'overallLableLength',
+                        'SKU_SEQ':'skuSeq', 
+                        'SKU_QUANTITY':'skuQty', 
+                        'Re_Qty':'reqQty',
+                        'Color_Group':'colorGroup', 
+                        'Group_SKU':'groupSku', 
+                        'Group_NATO':'groupNATO', 
+                        'Fix_Orientation':'fixOrientation',
+                        'JOB_NUMBER':'jobNumber', 
+                        'Dimension_Group':'dimensionGroup', 
+                        'Oracle_Batch':'oracleBatch'}
+  inverse_dict=dict([val,key] for key,val in use_dict.items())
+  df = df.rename(columns=inverse_dict)  
+  
+  return df
+
+
 def load_and_clean_data(df, input_file=None):
   """
   :param input_file: '../input/HTL_input_0419.csv'
@@ -118,19 +154,26 @@ def agg_to_get_dg_level_df(sku_level_df):
   return dg_level_df
 
 
-def initialize_input_data(input_file, filter_Color_Group):
+def initialize_input_data(input_mode, filter_Color_Group=[], input_file=None, jobs_dict_list=None):
   """
   :return:
     df_raw: input data before data cleaning;
     df: input data after data cleaning;    
     df_1: aggregated input data at dg level.      
   """
-  df_raw = pd.read_csv(input_file)
+  if input_mode=='csv':
+    df_raw = pd.read_csv(input_file)
+  elif input_mode=='json':
+    df_raw = convert_jobs_input_into_df(jobs_dict_list)
+  else:
+    print(f"undefined input_mode")
+    stop = 1/0
+
   if len(filter_Color_Group)>0:
     df_raw = df_raw[df_raw['Color_Group'].isin(filter_Color_Group)]  
   df = load_and_clean_data(df_raw)
   df_1 = agg_to_get_dg_level_df(df)
-  return df_raw, df, df_1
+  return df, df_1
 
 
 def initialize_dg_level_results(df):

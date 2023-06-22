@@ -16,6 +16,7 @@
 #20230620: committed
 #20230620：simulated GPM inputs
 #20230620：resolved ui_inputs, pending jobs_inputs
+#20230622: allow both csv and json input modes
 
 # COMMAND ----------
 
@@ -42,15 +43,19 @@ input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../in
 filter_Color_Group = [] #空代表不筛选，全部计算
 #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
 df = pd.read_csv(input_file)
+# display(df)
 if len(filter_Color_Group)>0:
   df = df[df['Color_Group'].isin(filter_Color_Group)]
 
-df.drop(columns=['RB','HEADER_VARIABLE_DATA|SKU_VALUE'], inplace=True)
+# df.drop(columns=['RB','HEADER_VARIABLE_DATA|SKU_VALUE'], inplace=True)
+if 'Re_Qty' not in df.columns:
+  df['Re_Qty'] = df['SKU_QUANTITY']+10
 df = df.rename(columns={'ITEM':'item', 
                         'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
                         'OVERALL_LABEL_LENGTH':'overallLableLength',
                         'SKU_SEQ':'skuSeq', 
                         'SKU_QUANTITY':'skuQty', 
+                        'Re_Qty':'reqQty',
                         'Color_Group':'colorGroup', 
                         'Group_SKU':'groupSku', 
                         'Group_NATO':'groupNATO', 
@@ -59,8 +64,8 @@ df = df.rename(columns={'ITEM':'item',
                         'Dimension_Group':'dimensionGroup', 
                         'Oracle_Batch':'oracleBatch'})
 
-cols = ["jobNumber", "item", "overallLabelWidth", "overallLableLength", "skuSeq", "skuQty", "reqQty", "layoutFileName", "colorGroup", "groupSku", "groupNATO", "fixOrientation", "dimensionGroup"
-        "internalDate", "dgInternalDate", "dgInternalWds", "djCreationDate", "djPrintingCompletionDate", "wds"]
+cols = ["jobNumber", "item", "overallLabelWidth", "overallLableLength", "skuSeq", "skuQty", "reqQty", "layoutFileName", "colorGroup", "groupSku", "groupNATO", "fixOrientation", "dimensionGroup",
+        "internalDate", "dgInternalDate", "dgInternalWds", "djCreationDate", "djPrintingCompletionDate", "wds", "HEADER_VARIABLE_DATA|SKU_VALUE", "RB"]
 for c in cols:
   if c not in df.columns:
     if c == 'wds':
@@ -123,7 +128,7 @@ print(start_time)
 
 import numpy as np
 from utils.tools import allocate_sku
-from utils.load_data import load_user_params, load_config, initialize_input_data
+from utils.load_data import load_user_params, load_config, initialize_input_data, convert_jobs_input_into_df
 from model.shared_solver import split_abc_ups
 
 # COMMAND ----------
@@ -132,7 +137,7 @@ def main():
   #get and update configs
   user_params = load_user_params(input_params)  
   batching_type = user_params["batching_type"]
-  print(f"batching_type={batching_type}")
+  print(f"batching_type = {batching_type}")
 
   config_path = f"../config/config.json"  
   params_dict = load_config(config_path)[batching_type]
@@ -140,20 +145,23 @@ def main():
   print(params_dict)
 
   #jobs input
-  将input_params转换为jobs数据
-  df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
-
+  input_mode = params_dict['algo_params']['input_mode']
+  print(f"input_mode = {input_mode}")
+  if input_mode == 'csv':
+    df, df_1 = initialize_input_data(input_mode, filter_Color_Group, input_file=input_file) #------ 数据清洗部分可以转移到GPM完成
+  elif input_mode == 'json':
+    df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
+    
   #main
   #---------------------------------------------------------------------------------------------------------
-
-  if batching_type=='1_OCOD':
+  if batching_type == '1_OCOD':
     pass
-  elif batching_type=='2_OCMD':
+  elif batching_type == '2_OCMD':
     pass
-  elif batching_type=='3_MCMD_Seperater':  
+  elif batching_type == '3_MCMD_Seperater':  
     from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
     best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(params_dict, df, df_1)
-  elif batching_type=='4_MCMD_No_Seperater':
+  elif batching_type == '4_MCMD_No_Seperater':
     pass
   #---------------------------------------------------------------------------------------------------------  
   print("done")
@@ -161,12 +169,6 @@ def main():
 
 if __name__ == "__main__":
   df, df_3, params_dict, best_index, best_batch, best_res = main()
-
-# COMMAND ----------
-
-end_time = datetime.now()
-print(start_time, end_time)
-print('running time =', (end_time-start_time).seconds, 'seconds')
 
 # COMMAND ----------
 
