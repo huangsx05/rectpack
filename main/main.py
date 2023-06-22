@@ -17,6 +17,7 @@
 #20230620：simulated GPM inputs
 #20230620：resolved ui_inputs, pending jobs_inputs
 #20230622: allow both csv and json input modes
+#20230622: committed
 
 # COMMAND ----------
 
@@ -44,25 +45,17 @@ filter_Color_Group = [] #空代表不筛选，全部计算
 
 # COMMAND ----------
 
-from datetime import datetime
-start_time = datetime.now()
-print(start_time)
-
-# COMMAND ----------
-
 import numpy as np
+from datetime import datetime
 from utils.tools import allocate_sku
 from utils.load_data import load_user_params, load_config, initialize_input_data, convert_jobs_input_into_df
 from model.shared_solver import split_abc_ups
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 def main(input_params):
-  print(f"[time log]{datetime.now()}: start main")
+  start_time = datetime.now()
+  print(f"[{datetime.now()}]: start main")
   #get and update configs
   user_params = load_user_params(input_params)  
   batching_type = user_params["batching_type"]
@@ -75,7 +68,7 @@ def main(input_params):
     print(k, ': ', v)
 
   #jobs input
-  print(f"[time log]{datetime.now()}: preparing jobs input")
+  print(f"[{datetime.now()}]: preparing jobs input")
   input_mode = params_dict['algo_params']['input_mode']
   print(f"input_mode = {input_mode}")
   if input_mode == 'csv':
@@ -85,7 +78,7 @@ def main(input_params):
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
     
   #main
-  print(f"[time log]{datetime.now()}: start batching")
+  print(f"[{datetime.now()}]: start batching")
   #---------------------------------------------------------------------------------------------------------
   if batching_type == '1_OCOD':
     pass
@@ -93,11 +86,11 @@ def main(input_params):
     pass
   elif batching_type == '3_MCMD_Seperater':  
     from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
-    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(params_dict, df, df_1)
+    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_1)
   elif batching_type == '4_MCMD_No_Seperater':
     pass
   #---------------------------------------------------------------------------------------------------------  
-  print(f"[time log]{datetime.now()}: end batching")
+  print(f"[{datetime.now()}]: end batching")
   return df, df_1, params_dict, best_index, best_batch, best_res
 
 if __name__ == "__main__":
