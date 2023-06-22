@@ -20,13 +20,14 @@
 
 # COMMAND ----------
 
-import json
-import pandas as pd
+# MAGIC %md
+# MAGIC #### main
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC #### simulate GPM inputs
+import json
+import pandas as pd
+from utils.load_data import convert_jobs_df_to_json
 
 # COMMAND ----------
 
@@ -36,95 +37,18 @@ with open(user_params_path, "r", encoding="utf-8") as f:
   input_params = json.load(f) 
 print(input_params)
 
-# COMMAND ----------
-
 #job inputs
 input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
 filter_Color_Group = [] #空代表不筛选，全部计算
 #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
-df = pd.read_csv(input_file)
-# display(df)
-if len(filter_Color_Group)>0:
-  df = df[df['Color_Group'].isin(filter_Color_Group)]
-
-# df.drop(columns=['RB','HEADER_VARIABLE_DATA|SKU_VALUE'], inplace=True)
-if 'Re_Qty' not in df.columns:
-  df['Re_Qty'] = df['SKU_QUANTITY']+10
-df = df.rename(columns={'ITEM':'item', 
-                        'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
-                        'OVERALL_LABEL_LENGTH':'overallLableLength',
-                        'SKU_SEQ':'skuSeq', 
-                        'SKU_QUANTITY':'skuQty', 
-                        'Re_Qty':'reqQty',
-                        'Color_Group':'colorGroup', 
-                        'Group_SKU':'groupSku', 
-                        'Group_NATO':'groupNATO', 
-                        'Fix_Orientation':'fixOrientation',
-                        'JOB_NUMBER':'jobNumber', 
-                        'Dimension_Group':'dimensionGroup', 
-                        'Oracle_Batch':'oracleBatch'})
-
-cols = ["jobNumber", "item", "overallLabelWidth", "overallLableLength", "skuSeq", "skuQty", "reqQty", "layoutFileName", "colorGroup", "groupSku", "groupNATO", "fixOrientation", "dimensionGroup",
-        "internalDate", "dgInternalDate", "dgInternalWds", "djCreationDate", "djPrintingCompletionDate", "wds", "HEADER_VARIABLE_DATA|SKU_VALUE", "RB"]
-for c in cols:
-  if c not in df.columns:
-    if c == 'wds':
-      df[c] = 1
-    else:
-      df[c] = 'dummy'
-
-df = df[cols]
-# display(df)
-
-#df转化为df_agg
-agg_dict = {}
-for c in cols:
-  if c!='jobNumber':
-    agg_dict[c] = 'first'
-df_agg = df.groupby(['jobNumber']).agg(agg_dict).reset_index()
-# display(df_agg)
-
-#df_agg转换成字典
-jobInfo_dict_list = []
-for index, row in df.iterrows():
-  jobInfo_dict_list.append(row.to_dict())
-# print(jobInfo_dict_list[0]) #print a sampel to view the results
-
-#添加sku info
-job_number_list = df['jobNumber'].unique()
-for j in job_number_list:
-  df_sku = df[df['jobNumber']==j][["skuSeq", "skuQty", "reqQty", "layoutFileName"]]
-  skuInfo_dict_list = []
-  for index, row in df_sku.iterrows():
-    skuInfo_dict_list.append(row.to_dict())
-  # print(skuInfo_dict_list[0]) #print a sampel to view the results
-  for jobInfo_dict in jobInfo_dict_list:
-    if jobInfo_dict['jobNumber']==j:
-      jobInfo_dict["skuInfo"] = skuInfo_dict_list
-      
-print(jobInfo_dict_list[0]) #print a sampel to view the results
-
-# COMMAND ----------
-
-#combine ui inputs and job inputs
-input_params["jobInfo"] = jobInfo_dict_list
-for k,v in input_params.items():
-  if k=='jobInfo':
-    print(f"{k}:[{v[0]}]")
-  else:
-    print(f"{k}:{v}")
-# print(input_params)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC #### main
 
 # COMMAND ----------
 
 from datetime import datetime
 start_time = datetime.now()
 print(start_time)
+
+# COMMAND ----------
 
 import numpy as np
 from utils.tools import allocate_sku
@@ -133,7 +57,12 @@ from model.shared_solver import split_abc_ups
 
 # COMMAND ----------
 
-def main():
+
+
+# COMMAND ----------
+
+def main(input_params):
+  print(f"[time log]{datetime.now()}: start main")
   #get and update configs
   user_params = load_user_params(input_params)  
   batching_type = user_params["batching_type"]
@@ -142,17 +71,21 @@ def main():
   config_path = f"../config/config.json"  
   params_dict = load_config(config_path)[batching_type]
   params_dict['user_params'] = user_params
-  print(params_dict)
+  for k,v in params_dict.items():
+    print(k, ': ', v)
 
   #jobs input
+  print(f"[time log]{datetime.now()}: preparing jobs input")
   input_mode = params_dict['algo_params']['input_mode']
   print(f"input_mode = {input_mode}")
   if input_mode == 'csv':
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, input_file=input_file) #------ 数据清洗部分可以转移到GPM完成
   elif input_mode == 'json':
+    input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #simulated json inputs
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
     
   #main
+  print(f"[time log]{datetime.now()}: start batching")
   #---------------------------------------------------------------------------------------------------------
   if batching_type == '1_OCOD':
     pass
@@ -164,11 +97,11 @@ def main():
   elif batching_type == '4_MCMD_No_Seperater':
     pass
   #---------------------------------------------------------------------------------------------------------  
-  print("done")
+  print(f"[time log]{datetime.now()}: end batching")
   return df, df_1, params_dict, best_index, best_batch, best_res
 
 if __name__ == "__main__":
-  df, df_3, params_dict, best_index, best_batch, best_res = main()
+  df, df_3, params_dict, best_index, best_batch, best_res = main(input_params)
 
 # COMMAND ----------
 
@@ -201,7 +134,7 @@ params_dict
 
 # COMMAND ----------
 
-ink_seperator_width = params_dict["user_params"]["ink_seperator_width"]
+ink_seperator_width = int(params_dict["user_params"]["ink_seperator_width"])
 ink_seperator_width
 
 # COMMAND ----------
@@ -273,7 +206,7 @@ display(df_3_3)
 
 # COMMAND ----------
 
-n_abc = params_dict["user_params"]["n_abc"]
+n_abc = int(params_dict["user_params"]["n_abc"])
 
 # COMMAND ----------
 

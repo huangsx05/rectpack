@@ -1,7 +1,5 @@
 {
   "3_MCMD_Seperater": {
-    "business_params": {
-    },  
     "algo_params": {
       "input_mode": "json",
       "criteria_check": 0,

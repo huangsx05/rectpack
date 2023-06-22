@@ -63,6 +63,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
   res_list = []
 
+  n_batch_max = len(batches_list)
   while True: #时限未到
     #取样
     #remove batches in old_batches
@@ -115,7 +116,7 @@ def runner_3_mcmd_seperator_sku_pds(params_dict, df, df_3):
 
     #更新历史数据
     old_batches += batches
-    if len(old_batches)>=len(batches_list): #停止条件2
+    if len(old_batches)>=n_batch_max: #停止条件2
       print(f"computed for ALL {len(old_batches)} batches")
       break  
 

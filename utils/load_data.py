@@ -45,6 +45,79 @@ def write_config(config_file, params_dict):
         yaml.dump(params_dict, stream=f, allow_unicode=True)
 
 
+def convert_jobs_df_to_json(input_params, input_file, filter_Color_Group=[]):
+  df = pd.read_csv(input_file)
+  # display(df)
+  if len(filter_Color_Group)>0:
+    df = df[df['Color_Group'].isin(filter_Color_Group)]
+
+  # df.drop(columns=['RB','HEADER_VARIABLE_DATA|SKU_VALUE'], inplace=True)
+  if 'Re_Qty' not in df.columns:
+    df['Re_Qty'] = df['SKU_QUANTITY']+10
+  df = df.rename(columns={'ITEM':'item', 
+                          'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
+                          'OVERALL_LABEL_LENGTH':'overallLableLength',
+                          'SKU_SEQ':'skuSeq', 
+                          'SKU_QUANTITY':'skuQty', 
+                          'Re_Qty':'reqQty',
+                          'Color_Group':'colorGroup', 
+                          'Group_SKU':'groupSku', 
+                          'Group_NATO':'groupNATO', 
+                          'Fix_Orientation':'fixOrientation',
+                          'JOB_NUMBER':'jobNumber', 
+                          'Dimension_Group':'dimensionGroup', 
+                          'Oracle_Batch':'oracleBatch'})
+
+  cols = ["jobNumber", "item", "overallLabelWidth", "overallLableLength", "skuSeq", "skuQty", "reqQty", "layoutFileName", "colorGroup", "groupSku", "groupNATO", "fixOrientation", "dimensionGroup",
+          "internalDate", "dgInternalDate", "dgInternalWds", "djCreationDate", "djPrintingCompletionDate", "wds", "HEADER_VARIABLE_DATA|SKU_VALUE", "RB"]
+  for c in cols:
+    if c not in df.columns:
+      if c == 'wds':
+        df[c] = 1
+      else:
+        df[c] = 'dummy'
+
+  df = df[cols]
+  # display(df)
+
+  #df转化为df_agg
+  agg_dict = {}
+  for c in cols:
+    if c!='jobNumber':
+      agg_dict[c] = 'first'
+  df_agg = df.groupby(['jobNumber']).agg(agg_dict).reset_index()
+  # display(df_agg)
+
+  #df_agg转换成字典
+  jobInfo_dict_list = []
+  for index, row in df.iterrows():
+    jobInfo_dict_list.append(row.to_dict())
+  # print(jobInfo_dict_list[0]) #print a sampel to view the results
+
+  #添加sku info
+  job_number_list = df['jobNumber'].unique()
+  for j in job_number_list:
+    df_sku = df[df['jobNumber']==j][["skuSeq", "skuQty", "reqQty", "layoutFileName"]]
+    skuInfo_dict_list = []
+    for index, row in df_sku.iterrows():
+      skuInfo_dict_list.append(row.to_dict())
+    # print(skuInfo_dict_list[0]) #print a sampel to view the results
+    for jobInfo_dict in jobInfo_dict_list:
+      if jobInfo_dict['jobNumber']==j:
+        jobInfo_dict["skuInfo"] = skuInfo_dict_list
+  # print(jobInfo_dict_list[0]) #print a sampel to view the results
+
+  #combine ui inputs and job inputs
+  input_params["jobInfo"] = jobInfo_dict_list
+  # for k,v in input_params.items():
+  #   if k=='jobInfo':
+  #     print(f"{k}:[{v[0]}]")
+  #   else:
+  #     print(f"{k}:{v}")
+  # print(input_params)
+  return input_params
+
+
 def convert_jobs_input_into_df(jobs_dict_list):
   job_number_df = pd.DataFrame(jobs_dict_list)
   # # print(job_number_df)
