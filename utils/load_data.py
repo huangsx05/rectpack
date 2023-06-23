@@ -223,7 +223,7 @@ def agg_to_get_dg_level_df(sku_level_df):
   agg_dict = {'re_qty':'sum', 'wds':'min'}
   for c in cols_to_first:
     agg_dict[c] = 'first'
-  dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
+  dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict)#.reset_index()
   return dg_level_df
 
 

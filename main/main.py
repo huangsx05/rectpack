@@ -39,9 +39,9 @@ with open(user_params_path, "r", encoding="utf-8") as f:
 print(input_params)
 
 #job inputs
-input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
-filter_Color_Group = [] #空代表不筛选，全部计算
-#filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
+input_file = '../input/HTL_input_0419.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
+# filter_Color_Group = [] #空代表不筛选，全部计算
+filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
 
 # COMMAND ----------
 
@@ -76,7 +76,8 @@ def main(input_params):
   elif input_mode == 'json':
     input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #simulated json inputs
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
-    
+  # print(df_1.columns)
+
   #main
   print(f"[{datetime.now()}]: start batching")
   #---------------------------------------------------------------------------------------------------------
@@ -323,7 +324,7 @@ df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).reset_index()
 metrics_3_3 = np.sum(df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).values)
 # metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'weighted_sku_pds':'max'}).values)
 n_batch = df_res['batch_id'].nunique()
-print(f'sum_pds = {metrics_3_3+params_dict["user_params"]["add_pds_per_sheet"]*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
+print(f'sum_pds = {metrics_3_3+int(params_dict["user_params"]["add_pds_per_sheet"])*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
 
 # COMMAND ----------
 

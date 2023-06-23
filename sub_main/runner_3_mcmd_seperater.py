@@ -37,16 +37,24 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
 
   #batches list
   print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
-  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit)  
+  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit) 
+  # test_batches_list = [set([str(v) for v in batch.values()]) for batch in batches_list]
+  # test_batch = {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
+  # print(set([str(v) for v in test_batch.values()]) in test_batches_list) 
+
+  #为了后面的加速和标准化，这里给出的batches_list应该符合以下要求：
+  #1) sub_batch按照长度降序
+  #2) dg_id升序
 
   # #sample batch 输入
   # batches_list = [
-  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
-  # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
+  # # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
+  # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}, # - 404
+  # # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_088', 'dg_091'], 'b4': ['dg_086']} # - 405
   # ]
   # ppc_batch = [
-  # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
-  # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution - 0419
+  # # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
+  # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
   # ]
   # batches_list = ppc_batch+batches_list  
 
@@ -63,9 +71,9 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   n_iteration = 0
   res_list = []
   n_batch_max = len(batches_list)
+  random.seed(1013)
   while True: #时限未到
     print()
-    n_iteration += 1
 
     #取样
     # print(f'before dropping old batches, len(batches) = {len(batches_list)}')
@@ -73,13 +81,14 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     print(f'[{datetime.now()}]: n_iteration = {n_iteration}, after dropping old batches, len(batches) = {len(batches_list)}')
     sample_batch_num = np.min([sample_batch_num,len(batches_list)])
     batches = random.sample(batches_list, sample_batch_num)
+    n_iteration += 1    
+    n_count += len(batches)
 
     #转化batches输入为字典(列表转换为字典)
-    batches_dict = {}
-    for i in range(len(batches)):
-      batch_name = 'batch_'+str(n_count+i)
-      batches_dict[batch_name] = batches[i]
-    n_count += len(batches)
+    # batches_dict = {}
+    # for i in range(len(batches)):
+    #   batch_name = 'batch_'+str(n_count+i)
+    #   batches_dict[batch_name] = batches[i]
 
     #遍历batches找最优batch
     # ======== Option 1 --------------------------------------------------------------------------------------------------------------------------
@@ -99,8 +108,9 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     #   res_list.append(temp_res)
 
     # ======== Option 3 Parallel Computation ===================================================
-    temp_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, batches_dict, df_3, best_metric, params_dict, dg_sku_qty_dict) 
-                                       for batch_i in range(n_count-len(batches), n_count))
+    pre_n_count = n_count-len(batches)
+    temp_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, pre_n_count, batches, df_3, best_metric, params_dict, dg_sku_qty_dict) 
+                                       for batch_i in range(pre_n_count, n_count))
     res_list.append(temp_res)
     # ======================================================================    
 
@@ -108,7 +118,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     agg_compute_seconds = (datetime.now()-start_time).seconds
     print(f"agg_compute_seconds = {agg_compute_seconds} seconds")
     if agg_compute_seconds>=algo_time_limit: #停止条件1 
-      print(f"computed for {len(old_batches+batches)}/{len(batches_list)} batches")
+      print(f"computed for {len(old_batches+batches)}/{n_batch_max} batches")
       break
 
     #更新历史数据
@@ -129,6 +139,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
 
   best_index = min(assessed_metrics, key=assessed_metrics.get)
   best_res = res[best_index]
+  print(f"check_min_metric = {np.min(list(assessed_metrics.values()))}")
 
   best_batch = {}
   for k,v in best_res.items():
@@ -136,9 +147,10 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     sub_dgs = [i[:-2] for i in sub_dgs] 
     best_batch[k] = sub_dgs
 
-  print(f"assessed_metrics={assessed_metrics}")
+  # print(f"assessed_metrics={assessed_metrics}")  
   print(f"best_index={best_index}")
   print(f"best_res={best_res}")    
   print(f"bets_batch={best_batch}")
+  print(f"best_metric={np.min(list(assessed_metrics.values()))}")  
 
   return best_index, best_batch, best_res

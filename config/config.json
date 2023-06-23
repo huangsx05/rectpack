@@ -3,16 +3,16 @@
     "algo_params": {
       "input_mode": "json",
       "criteria_check": 0,
-      "batch_generate_mode": "heuristics_sub_batch_number",
+      "batch_generate_mode": "lower_upper_bound",
       "sample_batch_num": 8,
-      "upper_sub_batch_num": 5,
+      "upper_sub_batch_num": 6,
       "lower_sub_batch_num": 5,
       "layout_mode": "one_dg_one_column", 
-      "layout_tolerance": 1,
+      "layout_tolerance": 0,
       "n_jobs": 8,
       "n_sample_per_job": 2,
-      "algo_time_limit": 60,
-      "timeout_limit": 600                                 
+      "algo_time_limit": 120,
+      "timeout_limit": 36000                                 
     }                 
   }
 }

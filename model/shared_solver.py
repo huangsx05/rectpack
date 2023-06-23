@@ -12,6 +12,7 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limi
   # print(f'[{datetime.now()}] get_batches_by_sampling')    
   N = df_3['dg_id'].nunique() #dg数量
   dg_sorted_list = sorted(df_3['dg_id'].tolist())
+  print(f"sorted_dg = {dg_sorted_list}")
   dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
   dg_wds_dict = dict(zip(df_3['dg_id'].tolist(), df_3['wds'].tolist()))  #for internal dates
   n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定sub_batch数量下限
@@ -28,44 +29,31 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limi
   # print("sample_batch, sample_batch_num, upper_sub_batch_num, lower_sub_batch_num")
   # print(sample_batch, sample_batch_num, upper_sub_batch_num, lower_sub_batch_num)
   len_lower_limit = max(n_grp_lower,lower_sub_batch_num) #sub_batch数量满足下限
-  M = min(upper_sub_batch_num,N)  #dg分组数量上限  
+  M = min(upper_sub_batch_num,N)  #分组数量上限  
+  print(f'[{datetime.now()}] # of sub_batch range = [{len_lower_limit}, {M}]')    
 
   #get batches
-  print(f'[{datetime.now()}] generate all samples')    
   # print(f'n_grp_lower={n_grp_lower}')
   batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
   v_set_list = []   #for去重
-  # combination_list = [] #存储candidate batches(过滤batches之前)，存放的是index集合
-  #generate all possible combinations
+
+# #generate all possible combinations
   for n in range(N**M): #所有可能的组合的个数为N**M
     combination = [[] for __ in range(M)] #初始化, M是sub_batch数量
-    for i in range(N):
-      combination[n // M**i % M].append(i) 
-    combination = [c for c in combination if len(c)>0] #这里的c应该是排好序的
+    for i in range(N): #依次加入dg
+      combination[n // M**i % M].append(dg_sorted_list[i]) #one batch
+    combination = [c for c in combination if len(c)>0] #这里c里面的index应该是排好升序的
     combination = sorted(combination,key = lambda i:len(i),reverse=True) #combination按照sub_batch长度排序,利于快速筛除颜色过多的batch
     #过滤掉sub_batch数量过少的batches    
     if len(combination)>=len_lower_limit:
       #过滤条件1：去重  
       v_set = set([str(c) for c in combination])  
-      # v_set = set(combination)       
       if v_set not in v_set_list:
         v_set_list.append(v_set)      
-        # combination_list.append(combination)
-        #去掉颜色数大于limit的sub_batch   
-      # print(f'[{datetime.now()}] filter out n_color> batches')  
-      # for combination in combination_list: #一个combination对应一个batch
-        #将index变成dg_id
-        # batch = []
         batch_dict = {}
         for index in range(len(combination)): #遍历sub_batch
-        # for c in combination: #c is index list
-          # if len(c)>0:
-          sub_batch = [dg_sorted_list[i] for i in combination[index]]
-          # batch.append(sub_batch)
-        # if len(batch)>=max(n_grp_lower,lower_sub_batch_num): #sub_batch数量满足下限
-        # if len(batch)==M:    
-        #过滤条件2：去掉颜色数大于limit的sub_batch  
-        # for sub_batch in batch:
+          sub_batch = combination[index]
+          #过滤条件2：去掉颜色数大于limit的sub_batch  
           colors = [dg_cg_dict[s] for s in sub_batch]
           wds_list = [dg_wds_dict[s] for s in sub_batch]
           if len(set(colors))>n_color_limit:      
@@ -74,14 +62,7 @@ def get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limi
           elif np.max(wds_list)-np.min(wds_list)>internal_days_limit:
             break 
           else:
-            # batch_dict = {}
-            # for i in range(len(batch)):
-            b_key = 'b'+str(index)
-            batch_dict[b_key] = sub_batch      
-            # #去重 
-            # v_set = set([str(i) for i in batch_dict.values()])  
-            # if v_set not in v_set_list:
-            #   v_set_list.append(v_set)
+            batch_dict['b'+str(index)] = sub_batch      
         if len(batch_dict)==len(combination): #没有sub_batch因为n_color>limit
           batches_list.append(batch_dict)
 
@@ -113,7 +94,7 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
     sheet_weight = float(criteria_dict[sheet_name]['weight'])
     n_color_limit = int(criteria_dict[sheet_name]['n_color_limit'])
-    if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
+    if len(set(cg_id))>n_color_limit:
         print(f'ERROR: nunique_color > {n_color_limit}, skip this case for {sheet_name}')
         continue
 
@@ -184,13 +165,13 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
     sheet, res, tot_area = get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_qty,
                                                               dg_sku_qty_dict, params_dict) ###--->>>
 
-    #判断解是否符合criteria
-    if params_dict['algo_params']['criteria_check']:
-      sheet_size_name = str(int(sheet[0]))+'<+>'+str(int(sheet[1]))
-      pds_lower_lim = criteria_dict[sheet_size_name]['pds']
-      pds_value = np.max(res['pds'])
-      if pds_value < pds_lower_lim: #fail criteria
-        continue
+    # #判断解是否符合criteria
+    # if params_dict['algo_params']['criteria_check']:
+    #   sheet_size_name = str(int(sheet[0]))+'<+>'+str(int(sheet[1]))
+    #   pds_lower_lim = criteria_dict[sheet_size_name]['pds']
+    #   pds_value = np.max(res['pds'])
+    #   if pds_value < pds_lower_lim: #fail criteria
+    #     continue
 
     #如果是当前更优解，更新结果a
     if tot_area<min_tot_area:
@@ -295,9 +276,12 @@ def iterate_to_find_best_batch(batches_dict, df_3,
   return n_current, best_metric, best_index, best_batch, best_res
 
 
-def calculate_one_batch(batch_i, batches_dict, df_3, 
+def calculate_one_batch(batch_i, pre_n_count, batches, df_3, 
                         best_metric,
                         params_dict, dg_sku_qty_dict):
+  """
+  for parallel computation
+  """
   metric = 0
   res_batch = {}
   break_flag = 0 #用于控制结果不可能更优时退出当前batch  
@@ -307,13 +291,15 @@ def calculate_one_batch(batch_i, batches_dict, df_3,
 
   #获得batch
   batch_name = 'batch_'+str(batch_i)
-  batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+  batch = batches[batch_i-pre_n_count] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095'], 'b1': ['dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
 
   #获得dg和sub_batch_id的对应关系
   batch_revert = {}
+  # for k,v in batch.items():
+  #   for i in v:
+  #     batch_revert[i] = k #dg和batch的对应关系
   for k,v in batch.items():
-    for i in v:
-      batch_revert[i] = k #dg和batch的对应关系
+    batch_revert.update(dict(zip(v, [k]*len(v))))
   df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
 
   #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
@@ -325,6 +311,7 @@ def calculate_one_batch(batch_i, batches_dict, df_3,
     #   print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
     #   break_flag = 1
     #   break
+    
     #准备输入数据
     dg_id = df_i['dg_id'].values.tolist()
     fix_orientation = df_i['fix_orientation'].values.tolist()
@@ -333,7 +320,7 @@ def calculate_one_batch(batch_i, batches_dict, df_3,
     re_qty = df_i['re_qty'].values.tolist()
 
     #穷举该sub_batch所有rotation可能性的组合
-    comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,label_length)
+    comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id, fix_orientation, label_width, label_length)
 
     #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
     #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
@@ -343,7 +330,7 @@ def calculate_one_batch(batch_i, batches_dict, df_3,
     max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
     sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
     sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
-    temp_sub_batch_metric += max_pds*sheet_weight
+    temp_sub_batch_metric += (add_pds_per_sheet+max_pds*sheet_weight)
 
     if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
       break_flag = 1
