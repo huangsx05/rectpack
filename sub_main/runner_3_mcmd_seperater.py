@@ -3,7 +3,7 @@ import pandas as pd
 import random
 from datetime import timedelta, datetime
 from joblib import Parallel, delayed
-from model.shared_solver import get_batches_with_filter, calculate_one_batch
+from model.shared_solver import get_batches_with_filter, get_batches_heuristics, calculate_one_batch
 
 def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   print(f"[{datetime.now()}]: start runner_3_mcmd_seperator_sku_pds")
@@ -36,11 +36,14 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   # print(dg_sku_qty_dict) 
 
   #batches list
-  print(f"batch_generate_mode = {params_dict['algo_params']['batch_generate_mode']}")
+  batch_generate_mode = params_dict['algo_params']['batch_generate_mode']
+  print(f"batch_generate_mode = {batch_generate_mode}")
   batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit) 
   # test_batches_list = [set([str(v) for v in batch.values()]) for batch in batches_list]
   # test_batch = {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
   # print(set([str(v) for v in test_batch.values()]) in test_batches_list) 
+  # for b in batches_list:
+  #   print(b)
 
   #为了后面的加速和标准化，这里给出的batches_list应该符合以下要求：
   #1) sub_batch按照长度降序
@@ -48,9 +51,9 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
 
   # #sample batch 输入
   # batches_list = [
-  # # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']}
-  # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}, # - 404
-  # # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_088', 'dg_091'], 'b4': ['dg_086']} # - 405
+  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']} #276 -273
+  # # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}, # - 404 - 415
+  # # # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_088', 'dg_091'], 'b4': ['dg_086']} # - 405
   # ]
   # ppc_batch = [
   # # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
@@ -147,7 +150,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     sub_dgs = [i[:-2] for i in sub_dgs] 
     best_batch[k] = sub_dgs
 
-  # print(f"assessed_metrics={assessed_metrics}")  
+  print(f"assessed_metrics={assessed_metrics}")  
   print(f"best_index={best_index}")
   print(f"best_res={best_res}")    
   print(f"bets_batch={best_batch}")

@@ -1,6 +1,17 @@
 import numpy as np
 
 
+def partitions(A):
+  if not A:
+    yield []
+  else:
+    a, *R = A
+    for partition in partitions(R):
+      yield partition + [[a]]
+      for i, subset in enumerate(partition):
+        yield partition[:i] + [subset + [a]] + partition[i+1:]
+        
+
 def add_sub_batch_id_to_df(df_3_3, batch):
   #revert字典，将batch号加入df_3_3
   batch_revert = {}

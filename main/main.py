@@ -21,6 +21,13 @@
 
 # COMMAND ----------
 
+      # ppc - algo - heuristics
+# 0419: 416 - 404  - 405
+# 0519: 304 - 276  - 273
+# 0614: 787 - 763  - 771
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC #### main
 
@@ -39,9 +46,9 @@ with open(user_params_path, "r", encoding="utf-8") as f:
 print(input_params)
 
 #job inputs
-input_file = '../input/HTL_input_0419.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
-# filter_Color_Group = [] #空代表不筛选，全部计算
-filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
+input_file = '../input/HTL_input_0614.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', 0614
+filter_Color_Group = [] #空代表不筛选，全部计算
+# filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
 
 # COMMAND ----------
 
@@ -56,11 +63,13 @@ from model.shared_solver import split_abc_ups
 def main(input_params):
   start_time = datetime.now()
   print(f"[{datetime.now()}]: start main")
-  #get and update configs
+
+  #get user params
   user_params = load_user_params(input_params)  
   batching_type = user_params["batching_type"]
   print(f"batching_type = {batching_type}")
 
+  #get algo config
   config_path = f"../config/config.json"  
   params_dict = load_config(config_path)[batching_type]
   params_dict['user_params'] = user_params
@@ -68,7 +77,7 @@ def main(input_params):
     print(k, ': ', v)
 
   #jobs input
-  print(f"[{datetime.now()}]: preparing jobs input")
+  # print(f"[{datetime.now()}]: preparing jobs input")
   input_mode = params_dict['algo_params']['input_mode']
   print(f"input_mode = {input_mode}")
   if input_mode == 'csv':
