@@ -3,10 +3,10 @@ import pandas as pd
 import random
 from datetime import timedelta, datetime
 from joblib import Parallel, delayed
-from model.shared_solver import get_batches_with_filter, get_batches_heuristics, calculate_one_batch
+from model.shared_solver import get_batches_heuristics_max_area_first, get_batches_main, filter_batches_with_criteria, calculate_one_batch
+from utils.tools import calculate_best_batch
 
 def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
-  print(f"[{datetime.now()}]: start runner_3_mcmd_seperator_sku_pds")
   #数据接口
   df_3.rename(columns={'dimension_group':'dg_id'},inplace=True)
   # # display(df_3)
@@ -35,10 +35,19 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     dg_sku_qty_dict[dg_name] = sku_qty_dict
   # print(dg_sku_qty_dict) 
 
+  # heuristics ==========================================================================================
   #batches list
-  batch_generate_mode = params_dict['algo_params']['batch_generate_mode']
-  print(f"batch_generate_mode = {batch_generate_mode}")
-  batches_list = get_batches_with_filter(df_3, params_dict, n_color_limit, internal_days_limit) 
+  # batch_generate_mode = params_dict['algo_params']['batch_generate_mode']
+  # print(f"batch_generate_mode = {batch_generate_mode}")
+  print(f"[{datetime.now()}]: start heuristics batching")  
+  initial_batches_list = get_batches_heuristics_max_area_first(df_3, params_dict, n_color_limit, internal_days_limit)
+  print(f"all heuristics batches # = {len(initial_batches_list)}:")
+  # for h in initial_batches_list:
+  #   print(h)
+  heuristics_batches_list = filter_batches_with_criteria(initial_batches_list, df_3, n_color_limit, internal_days_limit)
+  print(f"filtered heuristics batches # = {len(heuristics_batches_list)}:")
+  # for h in heuristics_batches_list:
+  #   print(h)
   # test_batches_list = [set([str(v) for v in batch.values()]) for batch in batches_list]
   # test_batch = {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}
   # print(set([str(v) for v in test_batch.values()]) in test_batches_list) 
@@ -48,6 +57,32 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   #为了后面的加速和标准化，这里给出的batches_list应该符合以下要求：
   #1) sub_batch按照长度降序
   #2) dg_id升序
+
+  old_batches = heuristics_batches_list
+
+  best_metric = 1e12
+  best_index = 0 #batch name
+  best_batch = []
+  best_res = {}
+
+  res_list = []
+  pre_n_count = 0
+  n_count = len(heuristics_batches_list)
+  heuristics_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, pre_n_count, heuristics_batches_list, 
+                                                                        df_3, best_metric, params_dict, dg_sku_qty_dict)
+                                           for batch_i in range(pre_n_count, n_count))
+  res_list.append(heuristics_res)
+  # print(f"heuristics result sample:")
+  # print(res_list[0])
+
+  #整理结果，找出最优batch
+  assessed_metrics, best_index, best_batch, best_res, best_metric = calculate_best_batch(res_list)
+  print(f"****** heuristics results ******")
+  # print(f"assessed_metrics={assessed_metrics}")  
+  print(f"best_index={best_index}")
+  print(f"best_res={best_res}")    
+  print(f"best_batch={best_batch}")
+  print(f"best_metric={best_metric}")  
 
   # #sample batch 输入
   # batches_list = [
@@ -60,19 +95,14 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
   # ]
   # batches_list = ppc_batch+batches_list  
-
-  #Batching
-  old_batches = []
-  n_count = 0 #已取样数
-  n_current = 0 #已计算数
-
-  best_metric = 1e12
-  best_index = 0 #batch name
-  best_batch = []
-  best_res = {}
+  STOP
+  # Iterative Batching ===============================================================================================
+  # 要给出执行iteration的条件和执行heuristics的条件
+  print(f"[{datetime.now()}]: start iterative batching")  
+  batches_list = get_batches_main(df_3, params_dict, n_color_limit, len(best_batch)) 
+  batches_list = [b for b in batches_list if b not in initial_batches_list]
 
   n_iteration = 0
-  res_list = []
   n_batch_max = len(batches_list)
   random.seed(1013)
   while True: #时限未到
@@ -84,6 +114,10 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     print(f'[{datetime.now()}]: n_iteration = {n_iteration}, after dropping old batches, len(batches) = {len(batches_list)}')
     sample_batch_num = np.min([sample_batch_num,len(batches_list)])
     batches = random.sample(batches_list, sample_batch_num)
+    batches = filter_batches_with_criteria(batches, df_3, n_color_limit, internal_days_limit)
+    for b in batches:
+      print(b)    
+    
     n_iteration += 1    
     n_count += len(batches)
 
@@ -114,8 +148,13 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     pre_n_count = n_count-len(batches)
     temp_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, pre_n_count, batches, df_3, best_metric, params_dict, dg_sku_qty_dict) 
                                        for batch_i in range(pre_n_count, n_count))
-    res_list.append(temp_res)
-    # ======================================================================    
+    temp_assessed_metrics, temp_best_index, temp_best_batch, temp_best_res, temp_best_metric = calculate_best_batch(temp_res)
+    if temp_best_metric<best_metric:
+      best_index = temp_best_index 
+      best_batch = temp_best_batch 
+      best_res = temp_best_res 
+      best_metric = temp_best_metric
+    # ======================================================================  
 
     #判断是否停止
     agg_compute_seconds = (datetime.now()-start_time).seconds
@@ -132,28 +171,16 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
 
   print(f"[{datetime.now()}]: break iteration, start to prepare results")
 
+  ############################################################################################
+
   #整理结果，找出最优batch
-  assessed_metrics = {}
-  res = {}
-  for i in range(len(res_list)):
-    for j in range(len(res_list[i])):  
-      assessed_metrics[list(res_list[i][j][1].keys())[0]] = res_list[i][j][0]
-      res[list(res_list[i][j][1].keys())[0]] = list(res_list[i][j][1].values())[0]['res']
+  # assessed_metrics, best_index, best_batch, best_res, best_metric = calculate_best_batch(res_list)
 
-  best_index = min(assessed_metrics, key=assessed_metrics.get)
-  best_res = res[best_index]
-  print(f"check_min_metric = {np.min(list(assessed_metrics.values()))}")
-
-  best_batch = {}
-  for k,v in best_res.items():
-    sub_dgs = v['best_comb'].split('<+>')
-    sub_dgs = [i[:-2] for i in sub_dgs] 
-    best_batch[k] = sub_dgs
-
-  print(f"assessed_metrics={assessed_metrics}")  
+  # print(f"assessed_metrics={assessed_metrics}")  
+  print(f"******FINAL RESULTS******")
   print(f"best_index={best_index}")
   print(f"best_res={best_res}")    
-  print(f"bets_batch={best_batch}")
-  print(f"best_metric={np.min(list(assessed_metrics.values()))}")  
+  print(f"best_batch={best_batch}")
+  print(f"best_metric={best_metric}")  
 
   return best_index, best_batch, best_res
