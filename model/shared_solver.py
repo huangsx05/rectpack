@@ -26,7 +26,6 @@ def checkTwoDictListIdentity(List1, List2):
 # ------ for batching ------
 
 def get_batches_heuristics_min_area_first(df_1, params_dict):
-  print(f'[{datetime.now()}] get_batches_by_heuristics - based on area')    
   df_1['label_area'] = df_1.apply(lambda x: x.overall_label_width*x.overall_label_length,axis=1)
   df_1['total_required_area'] = df_1.apply(lambda x: x.label_area*x.re_qty,axis=1)
   # display(df_1)
@@ -53,7 +52,7 @@ def get_batches_heuristics_min_area_first(df_1, params_dict):
   print(f"max_pds_range={max_pds_range}")
 
   previous_batches_DgQuan_list = []
-  all_batch_list = [] #每一个元素是一个batch
+  all_batches_list = [] #每一个元素是一个batch
   for sharea in Sheet_size_area:
     for pds in range(min_pds_range,max_pds_range*2):
       dg_occupid_pecentage={}
@@ -70,9 +69,7 @@ def get_batches_heuristics_min_area_first(df_1, params_dict):
           min_dg_occupid_pecentage = dg_occupid_pecentage.get(min_key)
           batch_candidate[min_key] = min_dg_occupid_pecentage
           batch_DgQuan[min_key] = min_value
-          del DgQuan_working[min_key] 
-        print(f"pds={pds}")
-        print(batch_candidate)          
+          del DgQuan_working[min_key]     
         # print(batch_DgQuan)
         # batches_DgQuan_list.append(batch_DgQuan)
         batches_DgQuan_list.append(list(batch_DgQuan.keys()))     
@@ -87,17 +84,16 @@ def get_batches_heuristics_min_area_first(df_1, params_dict):
       # print(batches_DgQuan_list)
       # print(all_batch_list)
       # print(batches_DgQuan_list not in all_batch_list)
-      if batches_DgQuan_list not in all_batch_list:
-        all_batch_list.append(batches_DgQuan_list)
+      if batches_DgQuan_list not in all_batches_list:
+        all_batches_list.append(batches_DgQuan_list)
 
-  # all_batch_list = [[list(j.keys()) for j in i] for i in all_batch_list]
-  print(f'[{datetime.now()}] batches_heuristics # = {len(all_batch_list)}')    
+  # all_batches_list = [[list(j.keys()) for j in i] for i in all_batches_list]
+  print(f'[{datetime.now()}] batches_heuristics # = {len(all_batches_list)}')    
 
-  return all_batch_list
+  return all_batches_list
 
 
 def get_batches_heuristics_max_area_first(df_1, params_dict, n_color_limit, internal_days_limit):
-  print(f'[{datetime.now()}] get_batches_by_heuristics - based on area')  
   dg_cg_dict = dict(zip(df_1['dg_id'].tolist(), df_1['cg_id'].tolist()))
   dg_wds_dict = dict(zip(df_1['dg_id'].tolist(), df_1['wds'].tolist()))  #for internal dates    
 
@@ -126,57 +122,36 @@ def get_batches_heuristics_max_area_first(df_1, params_dict, n_color_limit, inte
   max_pds_range = int(max_dg_require_area_value/min_sheetsize_area)+1
   print(f"max_pds_range={max_pds_range}")
 
+  #生成所有batches
   previous_batches_DgQuan_list = []
-  all_batch_list = [] #每一个元素是一个batch
+  all_batches_list = [] #每一个元素是一个batch
   for sharea in Sheet_size_area:
-    for pds in range(min_pds_range,max_pds_range*2):
-  # for sharea in [678*528]:
-  #   for pds in [111]:      
+    for pds in range(min_pds_range,max_pds_range*2):   
       dg_occupid_pecentage={}
       for k,v in DgQuan_original.items():
         dg_occupid_pecentage[k] = v/(pds*sharea)
-      # print(f"dg_occupid_pecentage = {dg_occupid_pecentage}")
 
-      sorted_dgs_desc = sorted(dg_occupid_pecentage.items(), key=lambda x:x[1], reverse=True) 
-      # print(f"sorted_dgs_desc = {sorted_dgs_desc}")      
+      sorted_dgs_desc = sorted(dg_occupid_pecentage.items(), key=lambda x:x[1], reverse=True)     
       sorted_dgs_desc = [x[0] for x in sorted_dgs_desc] 
 
       non_assign_dgs = sorted_dgs_desc
       assigned_dgs = []
       batch = []
       while len(non_assign_dgs)>0:
-        # print(f"outside loop len(non_assign_dgs) = {len(non_assign_dgs)}")
         sub_batch = {}
         while (sum(sub_batch.values())<1) & (len(non_assign_dgs)>0):
-          # print()
-          # print(f"{non_assign_dgs[0]} - inside loop len(non_assign_dgs) = {len(non_assign_dgs)}")
           max_key = non_assign_dgs[0]
           max_value = dg_occupid_pecentage[max_key]
-          # print(list(sub_batch.keys()), max_key)
-          # print(list(sub_batch.keys()).append(max_key))
-          # print(f"sub_batch = {sub_batch}, max_key = {max_key}, assigned_dgs = {assigned_dgs}, non_assign_dgs = {non_assign_dgs}")
-          # print(f"len(sub_batch)={len(sub_batch)}, len(non_assign_dgs)={len(non_assign_dgs)}, sum={sum(sub_batch.values())}+{max_value}")          
-          # if (len(sub_batch)==0) & (len(non_assign_dgs)==1):  
-          #   print(f'case 1, assigned {max_key} - (len(sub_batch)==0) & (len(non_assign_dgs)==1)')
-          #   sub_batch[max_key] = max_value
-          #   assigned_dgs.append(max_key)
-          #   break                    
-          # elif (len(sub_batch)==0) | (sum(sub_batch.values())+max_value<=1):
 
-          con1 = (len(sub_batch)==0) | (sum(sub_batch.values())+max_value<=1)
-          # if len(sub_batch)!=0:
           temp_dgs = list(sub_batch.keys())
           temp_dgs.append(max_key)
-          # print(max_key, cur_dgs, temp_dgs)          
-          # temp_dgs = [str(i) for i in temp_dgs]
-
           temp_color_set = set([dg_cg_dict[s] for s in temp_dgs])
-          temp_wds_list = [dg_wds_dict[s] for s in temp_dgs]
+          temp_wds_list = [dg_wds_dict[s] for s in temp_dgs]  
+          con1 = (len(sub_batch)==0) | (sum(sub_batch.values())+max_value<=1)
           con2 = len(temp_color_set)<=n_color_limit          
           con3 = np.max(temp_wds_list)-np.min(temp_wds_list)<=internal_days_limit
-
           if con1 & con2 & con3:
-            # print(f'case 1, assigned {max_key} - (len(sub_batch)==0) | (sum(sub_batch.values())+max_value<=1)')          
+            # print(f'case 1, assigned {max_key}')          
             sub_batch[max_key] = max_value
             assigned_dgs.append(max_key)
             non_assign_dgs = non_assign_dgs[1:]
@@ -184,15 +159,127 @@ def get_batches_heuristics_max_area_first(df_1, params_dict, n_color_limit, inte
             # print(f'case 2, drop {max_key}')               
             non_assign_dgs = non_assign_dgs[1:]
         batch.append(list(sub_batch.keys()))      
-        non_assign_dgs = [i for i in sorted_dgs_desc if i not in assigned_dgs]
-        # print(f"assigned_dgs = {assigned_dgs}")
-        # print(f"non_assign_dgs = {non_assign_dgs}")          
-      if batch not in all_batch_list:
-        all_batch_list.append(batch)
-  # all_batch_list = [[list(j.keys()) for j in i] for i in all_batch_list]
-  print(f'[{datetime.now()}] batches_heuristics # = {len(all_batch_list)}')    
+        non_assign_dgs = [i for i in sorted_dgs_desc if i not in assigned_dgs]         
+      if batch not in all_batches_list:
+        all_batches_list.append(batch)
+  print(f'[{datetime.now()}] batches_heuristics # = {len(all_batches_list)}')    
 
-  return all_batch_list
+  #加sub_batch_name，每一个batch转换成字典
+  batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
+  for combination in all_batches_list:  
+    combination = sorted(combination,key = lambda i:len(i),reverse=True) #combination按照sub_batch长度排序,利于快速筛除颜色过多的batch
+    combination = [sorted(s) for s in combination] #dg排序
+    batch_dict = {}    
+    for index in range(len(combination)): #遍历sub_batch
+      sub_batch = combination[index]
+      batch_dict['b'+str(index)] = sub_batch  
+    batches_list.append(batch_dict)
+
+  return batches_list
+
+
+def get_batches_with_filter(df_3, params_dict, lower_sub_batch_num, upper_sub_batch_num, n_color_limit, internal_days_limit):
+  #get params
+  # print(f'[{datetime.now()}] get_batches_by_sampling')    
+  N = df_3['dg_id'].nunique() #dg数量
+  dg_sorted_list = sorted(df_3['dg_id'].tolist())
+  dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
+  dg_wds_dict = dict(zip(df_3['dg_id'].tolist(), df_3['wds'].tolist()))  #for internal dates
+  n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定sub_batch数量下限
+
+  # sample_batch = params_dict['algo_params']['sample_batch'] #true/false
+  # sample_batch_num = params_dict['algo_params']['sample_batch_num'] #考虑做成动态调整,并考虑在时间允许的范围内loop
+  # batch_generate_mode = params_dict['algo_params']['batch_generate_mode']
+  # if batch_generate_mode=='lower_upper_bound': #依赖于参数输入
+  # upper_sub_batch_num = params_dict['algo_params']['upper_sub_batch_num'] #考虑做成动态调整
+  # lower_sub_batch_num = params_dict['algo_params']['lower_sub_batch_num'] #考虑做成动态调整
+  # elif batch_generate_mode=='heuristics_sub_batch_number': #有很大的提升空间
+  #   upper_sub_batch_num = int(df_3['cg_id'].nunique()/1.6)
+  #   lower_sub_batch_num = upper_sub_batch_num
+  # print("sample_batch, sample_batch_num, upper_sub_batch_num, lower_sub_batch_num")
+  # print(sample_batch, sample_batch_num, upper_sub_batch_num, lower_sub_batch_num)
+  len_lower_limit = max(n_grp_lower,lower_sub_batch_num) #sub_batch数量满足下限
+  M = min(upper_sub_batch_num,N)  #dg分组数量上限  
+
+  #get batches
+  print(f'[{datetime.now()}] generate all samples')    
+  # print(f'n_grp_lower={n_grp_lower}')
+  batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
+  v_set_list = []   #for去重
+  # combination_list = [] #存储candidate batches(过滤batches之前)，存放的是index集合
+  #generate all possible combinations
+  for n in range(N**M): #所有可能的组合的个数为N**M
+    combination = [[] for __ in range(M)] #初始化, M是sub_batch数量
+    for i in range(N):
+      combination[n // M**i % M].append(i) 
+    combination = [c for c in combination if len(c)>0] #这里的c应该是排好序的
+    combination = sorted(combination,key = lambda i:len(i),reverse=True) #combination按照sub_batch长度排序,利于快速筛除颜色过多的batch
+    #过滤掉sub_batch数量过少的batches    
+    if len(combination)>=len_lower_limit:
+      #过滤条件1：去重 
+      v_set = set([str(c) for c in combination])  
+      # v_set = set(combination)       
+      if v_set not in v_set_list:
+        v_set_list.append(v_set)      
+        # combination_list.append(combination)
+      # print(f'[{datetime.now()}] filter out n_color> batches')  
+      # for combination in combination_list: #一个combination对应一个batch
+        #将index变成dg_id
+        # batch = []
+        batch_dict = {}
+        for index in range(len(combination)): #遍历sub_batch
+        # for c in combination: #c is index list
+          # if len(c)>0:
+          sub_batch = [dg_sorted_list[i] for i in combination[index]]
+          # batch.append(sub_batch)
+        # if len(batch)>=max(n_grp_lower,lower_sub_batch_num): #sub_batch数量满足下限
+        # if len(batch)==M:    
+          #过滤条件2：去掉颜色数大于limit的sub_batch    
+          colors = [dg_cg_dict[s] for s in sub_batch]
+          wds_list = [dg_wds_dict[s] for s in sub_batch]
+          if len(set(colors))>n_color_limit:      
+            break
+          #过滤条件3：internal dates 
+          elif np.max(wds_list)-np.min(wds_list)>internal_days_limit:
+            break           
+          else:
+            # batch_dict = {}
+            # for i in range(len(batch)):
+            b_key = 'b'+str(index)
+            batch_dict[b_key] = sub_batch      
+            # #去重 
+            # v_set = set([str(i) for i in batch_dict.values()])  
+            # if v_set not in v_set_list:
+            #   v_set_list.append(v_set)
+        if len(batch_dict)==len(combination): #没有sub_batch因为n_color>limit
+          batches_list.append(batch_dict)
+
+  print(f"n_dg={N}, sub_batch # limit={M}, all possible combination # = {N**M}")  
+  print(f"filtered batches, # = {len(batches_list)}")      
+
+  return batches_list
+
+
+def get_batches_by_partitions(df_3, params_dict, lower_sub_batch_num, upper_sub_batch_num, n_color_limit):
+  #get params
+  dg_sorted_list = sorted(df_3['dg_id'].tolist())
+  print(f"sorted_dg = {dg_sorted_list}")
+
+  n_grp_lower = int(np.ceil(df_3['cg_id'].nunique()/n_color_limit)) #按照颜色数量决定sub_batch数量下限
+  lower_sub_batch_num = np.max([lower_sub_batch_num, n_grp_lower,1]) #sub_batch数量满足下限
+  N = df_3['dg_id'].nunique() #dg数量
+  Mupper_sub_batch_num = np.min([upper_sub_batch_num, N])  #分组数量上限  
+  print(f'[{datetime.now()}] # of sub_batch range = [{lower_sub_batch_num}, {upper_sub_batch_num}]')      
+
+  from sympy.utilities.iterables import multiset_partitions
+  all_batches_list = []
+  for sub_batch_num in range(lower_sub_batch_num, upper_sub_batch_num+1):
+    all_batches_list += multiset_partitions(dg_sorted_list,sub_batch_num)
+  # print([['dg_087','dg_098','dg_099'],['dg_088','dg_091'],['dg_084','dg_093'],['dg_094','dg_095'],['dg_086']] in all_batches_list)
+  # all_batches_list = [[['dg_087','dg_098','dg_099'],['dg_088','dg_091'],['dg_084','dg_093'],['dg_094','dg_095'],['dg_086']]] + all_batches_list[:500] 
+  print(f"all_batches_list[0] sample = {all_batches_list[0]}")
+  # print(f"all_batches_list[-1] sample = {all_batches_list[-1]}")  
+  return all_batches_list#.append([['dg_087','dg_098','dg_099'],['dg_088','dg_091'],['dg_084','dg_093'],['dg_094','dg_095'],['dg_086']])    
 
 
 def get_batches_main(df_3, params_dict, n_color_limit, upper_sub_batch_num):
@@ -222,7 +309,7 @@ def get_batches_main(df_3, params_dict, n_color_limit, upper_sub_batch_num):
 
 
 def filter_batches_with_criteria(all_batches_list, df_3, n_color_limit, internal_days_limit):
-  print(f'[{datetime.now()}] filter_batches_with_criteria')      
+  print(f'[{datetime.now()}] filter_batches_with_criteria, before filter # = {len(all_batches_list)}')      
   dg_cg_dict = dict(zip(df_3['dg_id'].tolist(), df_3['cg_id'].tolist()))
   dg_wds_dict = dict(zip(df_3['dg_id'].tolist(), df_3['wds'].tolist()))  #for internal dates  
 
@@ -254,14 +341,9 @@ def filter_batches_with_criteria(all_batches_list, df_3, n_color_limit, internal
       else:
         batch_dict['b'+str(index)] = sub_batch      
     if len(batch_dict)==len(combination): #没有sub_batch因为n_color>limit
-      batches_list.append(batch_dict)
-
-  print(f"before filtered batches, # = {len(all_batches_list)}")    
-  print(f"after filtered batches, # = {len(batches_list)}")    
+      batches_list.append(batch_dict)   
 
   return batches_list
-
-
 
 # ------ for UPS Layout ------
 
@@ -483,6 +565,7 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   #获得batch
   batch_name = 'batch_'+str(batch_i)
   batch = batches[batch_i-pre_n_count] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095'], 'b1': ['dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+  print(f"batch = {batch}")
 
   #获得dg和sub_batch_id的对应关系
   batch_revert = {}
@@ -520,14 +603,15 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
                                                                                      dg_id, cg_id, re_qty, dg_sku_qty_dict, params_dict)
 
     max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
-    sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
-    sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
-    temp_sub_batch_metric += (add_pds_per_sheet+max_pds*sheet_weight)
+    # sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
+    # sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
+    # temp_sub_batch_metric += (add_pds_per_sheet+max_pds*sheet_weight)
 
-    if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
-      break_flag = 1
-      print('temp_sub_batch_metric>best_metric')
-      break
+    # if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
+    #   break_flag = 1
+    #   print('temp_sub_batch_metric>best_metric')
+    #   res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 'min_tot_area':min_tot_area}
+    #   return {batch_name:{'res':res_batch, 'metric':1e12}}
 
     res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 'min_tot_area':min_tot_area}
 

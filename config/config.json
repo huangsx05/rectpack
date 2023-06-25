@@ -2,16 +2,21 @@
   "3_MCMD_Seperater": {
     "algo_params": {
       "input_mode": "json",
-      "criteria_check": 0,
-      "batch_generate_mode": "partitions",
-      "sample_batch_num": 8,
-      "upper_sub_batch_num": 5,
-      "lower_sub_batch_num": 5,
       "layout_mode": "one_dg_one_column", 
-      "layout_tolerance": 0,
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "heuristics_batches_max_area_first": "True",
+      "heuristics_batches_min_area_first": "True",
+      "iterate_all_batches": "True",
+      "iterate_n_dg_threshold": 10,            
+      "iterate_n_cg_threshold": 8,       
+      "all_batch_generate_mode": "combinations",
+      "upper_sub_batch_num": 5,
+      "lower_sub_batch_num": 5, 
       "n_jobs": 8,
-      "n_sample_per_job": 2,
-      "algo_time_limit": 120,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
+      "algo_time_limit": 60,
       "timeout_limit": 36000                                 
     }                 
   }

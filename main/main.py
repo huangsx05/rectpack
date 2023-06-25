@@ -1,30 +1,8 @@
 # Databricks notebook source
-#Revision Log
-#20230607: clone from branch 3_mcmd_dev
-#20230607: change to read user params from json instead of databricks widgets
-#20230607: change to read config from json instead of yaml
-#20230607: user directly input add_pds_per_sheet instead of n_color
-#20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
-#20230607: add post-process part to main notebook
-#20230615: adjust user_params and config format according to user inputs
-#20230616: successful 0519 rerun after adjusting configs
-#20230617: move iterate_to_find_best_batch to shared_solver
-#20230617: only keep best batch results
-#20230620: dev for internal days limit
-#20230620: committed
-#20230620: finished parallel computation
-#20230620: committed
-#20230620：simulated GPM inputs
-#20230620：resolved ui_inputs, pending jobs_inputs
-#20230622: allow both csv and json input modes
-#20230622: committed
-
-# COMMAND ----------
-
-      # ppc - algo - minA - maxA
-# 0419: 416 - 404  - 415 - 411
-# 0519: 304 - 276  - 273 - 272
-# 0614: 787 - 763  - 771 - 763
+      # ppc - iter - minA - maxA
+# 0419: 416 - 404  - 415  - 411
+# 0519: 304 - 276  - 273  - 272
+# 0614: 787 - 763  - 771  - 763
 
 # COMMAND ----------
 
@@ -33,9 +11,17 @@
 
 # COMMAND ----------
 
+pip install sympy
+
+# COMMAND ----------
+
 import json
 import pandas as pd
-from utils.load_data import convert_jobs_df_to_json
+import numpy as np
+from datetime import datetime
+from utils.tools import allocate_sku
+from utils.load_data import convert_jobs_df_to_json, load_user_params, load_config, initialize_input_data, convert_jobs_input_into_df
+from model.shared_solver import split_abc_ups
 
 # COMMAND ----------
 
@@ -52,18 +38,7 @@ filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_
 
 # COMMAND ----------
 
-import numpy as np
-from datetime import datetime
-from utils.tools import allocate_sku
-from utils.load_data import load_user_params, load_config, initialize_input_data, convert_jobs_input_into_df
-from model.shared_solver import split_abc_ups
-
-# COMMAND ----------
-
 def main(input_params):
-  start_time = datetime.now()
-  print(f"[{datetime.now()}]: start main")
-
   #get user params
   user_params = load_user_params(input_params)  
   batching_type = user_params["batching_type"]
@@ -74,7 +49,9 @@ def main(input_params):
   params_dict = load_config(config_path)[batching_type]
   params_dict['user_params'] = user_params
   for k,v in params_dict.items():
-    print(k, ': ', v)
+    print(f"{k}:")
+    for ki, vi in v.items():
+      print(f"  {ki}: {vi}")
 
   #jobs input
   # print(f"[{datetime.now()}]: preparing jobs input")
@@ -83,12 +60,13 @@ def main(input_params):
   if input_mode == 'csv':
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, input_file=input_file) #------ 数据清洗部分可以转移到GPM完成
   elif input_mode == 'json':
-    input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #simulated json inputs
+    input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #JSON IUPUT
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
   # print(df_1.columns)
 
   #main
-  print(f"[{datetime.now()}]: start batching")
+  start_time = datetime.now() 
+  print(f"[{datetime.now()}]: ------ start main batching ------")
   #---------------------------------------------------------------------------------------------------------
   if batching_type == '1_OCOD':
     pass
@@ -100,7 +78,7 @@ def main(input_params):
   elif batching_type == '4_MCMD_No_Seperater':
     pass
   #---------------------------------------------------------------------------------------------------------  
-  print(f"[{datetime.now()}]: end batching")
+  print(f"[{datetime.now()}]: ------ end main batching ------")
   return df, df_1, params_dict, best_index, best_batch, best_res
 
 if __name__ == "__main__":

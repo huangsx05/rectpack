@@ -182,6 +182,7 @@ def calculate_best_batch(res_list):
   # print(f"check_min_metric = {np.min(list(assessed_metrics.values()))}")
 
   best_batch = {}
+  # print(best_res)
   for k,v in best_res.items():
     # print(k,v)
     if k!='metric':
