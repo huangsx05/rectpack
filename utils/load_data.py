@@ -2,6 +2,36 @@ import pandas as pd
 import json
 
 
+def load_user_params(input_params):
+  user_params = {}
+  user_params['request_type'] = input_params['requestType']
+  user_params["batching_type"] = input_params['batchingType']
+  user_params["add_pds_per_sheet"] = input_params['setUpPerBatch']
+  user_params["n_abc"] = input_params['setOfPlates']
+  user_params["min_single_col_width"] = input_params['minWidthandLength']
+  user_params["ink_seperator_width"] = input_params['separatorWidth']
+  user_params["internal_days"] = input_params['internalDays']
+
+  #考虑：如果可以直接判断某个sheet_size没有用，可以在这里排除
+  sheet_input_list = input_params["filmSize"].split('/')
+  sheet_input_list = [i.split(',') for i in sheet_input_list]  
+  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_input_list] #严格按照纸张从大到小排序
+  user_params['sheet_size_list'] = sheet_size_list
+
+  user_params['sheets'] = {}
+  batching_type = user_params["batching_type"]
+  for i in sheet_input_list:
+    sheet_name = str(i[0])+'<+>'+str(i[1])
+    sheet_weight = i[4]    
+    if batching_type=='3_MCMD_Seperater':
+      n_color_limit = i[2]
+    elif batching_type=='4_MCMD_No_Seperater':
+      n_color_limit = i[3]      
+    user_params['sheets'][sheet_name] = {'n_color_limit':n_color_limit, 'weight':sheet_weight}
+
+  return user_params
+
+
 def load_config(config_file, params_dict={}):
   with open(config_file, "r", encoding="utf-8") as fh:
       config = json.load(fh)
@@ -15,6 +45,115 @@ def write_config(config_file, params_dict):
         yaml.dump(params_dict, stream=f, allow_unicode=True)
 
 
+def convert_jobs_df_to_json(input_params, input_file, filter_Color_Group=[]):
+  df = pd.read_csv(input_file)
+  # display(df)
+  if len(filter_Color_Group)>0:
+    df = df[df['Color_Group'].isin(filter_Color_Group)]
+
+  # df.drop(columns=['RB','HEADER_VARIABLE_DATA|SKU_VALUE'], inplace=True)
+  if 'Re_Qty' not in df.columns:
+    df['Re_Qty'] = df['SKU_QUANTITY']+10
+  df = df.rename(columns={'ITEM':'item', 
+                          'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
+                          'OVERALL_LABEL_LENGTH':'overallLableLength',
+                          'SKU_SEQ':'skuSeq', 
+                          'SKU_QUANTITY':'skuQty', 
+                          'Re_Qty':'reqQty',
+                          'Color_Group':'colorGroup', 
+                          'Group_SKU':'groupSku', 
+                          'Group_NATO':'groupNATO', 
+                          'Fix_Orientation':'fixOrientation',
+                          'JOB_NUMBER':'jobNumber', 
+                          'Dimension_Group':'dimensionGroup', 
+                          'Oracle_Batch':'oracleBatch'})
+
+  cols = ["jobNumber", "item", "overallLabelWidth", "overallLableLength", "skuSeq", "skuQty", "reqQty", "layoutFileName", "colorGroup", "groupSku", "groupNATO", "fixOrientation", "dimensionGroup",
+          "internalDate", "dgInternalDate", "dgInternalWds", "djCreationDate", "djPrintingCompletionDate", "wds", "HEADER_VARIABLE_DATA|SKU_VALUE", "RB"]
+  for c in cols:
+    if c not in df.columns:
+      if c == 'wds':
+        df[c] = 1
+      else:
+        df[c] = 'dummy'
+
+  df = df[cols]
+  # display(df)
+
+  #df转化为df_agg
+  agg_dict = {}
+  for c in cols:
+    if c!='jobNumber':
+      agg_dict[c] = 'first'
+  df_agg = df.groupby(['jobNumber']).agg(agg_dict).reset_index()
+  # display(df_agg)
+
+  #df_agg转换成字典
+  jobInfo_dict_list = []
+  for index, row in df.iterrows():
+    jobInfo_dict_list.append(row.to_dict())
+  # print(jobInfo_dict_list[0]) #print a sampel to view the results
+
+  #添加sku info
+  job_number_list = df['jobNumber'].unique()
+  for j in job_number_list:
+    df_sku = df[df['jobNumber']==j][["skuSeq", "skuQty", "reqQty", "layoutFileName"]]
+    skuInfo_dict_list = []
+    for index, row in df_sku.iterrows():
+      skuInfo_dict_list.append(row.to_dict())
+    # print(skuInfo_dict_list[0]) #print a sampel to view the results
+    for jobInfo_dict in jobInfo_dict_list:
+      if jobInfo_dict['jobNumber']==j:
+        jobInfo_dict["skuInfo"] = skuInfo_dict_list
+  # print(jobInfo_dict_list[0]) #print a sampel to view the results
+
+  #combine ui inputs and job inputs
+  input_params["jobInfo"] = jobInfo_dict_list
+  # for k,v in input_params.items():
+  #   if k=='jobInfo':
+  #     print(f"{k}:[{v[0]}]")
+  #   else:
+  #     print(f"{k}:{v}")
+  # print(input_params)
+  return input_params
+
+
+def convert_jobs_input_into_df(jobs_dict_list):
+  job_number_df = pd.DataFrame(jobs_dict_list)
+  # # print(job_number_df)
+
+  # sku_df_list = []
+  # for i, row in job_number_df.iterrows():
+  #   job_number = row['jobNumber']
+  #   sku_info_list = row['skuInfo']
+  #   # print(sku_info_list)
+  #   # display(pd.DataFrame.from_dict(sku_info_list))
+  #   sku_df = pd.DataFrame.from_dict(sku_info_list)
+  #   sku_df['jobNumber'] = job_number
+  #   sku_df_list.append(sku_df)
+  # sku_df = pd.concat(sku_df_list)
+
+  df = job_number_df.drop(columns=['skuInfo'])
+  # df = job_df.merge(sku_df, how='left', on='jobNumber')#.sort_values(['jobNumber', 'skuSeq'])
+  use_dict = {'ITEM':'item', 
+                        'OVERALL_LABEL_WIDTH':'overallLabelWidth', 
+                        'OVERALL_LABEL_LENGTH':'overallLableLength',
+                        'SKU_SEQ':'skuSeq', 
+                        'SKU_QUANTITY':'skuQty', 
+                        'Re_Qty':'reqQty',
+                        'Color_Group':'colorGroup', 
+                        'Group_SKU':'groupSku', 
+                        'Group_NATO':'groupNATO', 
+                        'Fix_Orientation':'fixOrientation',
+                        'JOB_NUMBER':'jobNumber', 
+                        'Dimension_Group':'dimensionGroup', 
+                        'Oracle_Batch':'oracleBatch'}
+  inverse_dict=dict([val,key] for key,val in use_dict.items())
+  df = df.rename(columns=inverse_dict)  
+  
+  return df
+
+
 def load_and_clean_data(df, input_file=None):
   """
   :param input_file: '../input/HTL_input_0419.csv'
@@ -24,7 +163,7 @@ def load_and_clean_data(df, input_file=None):
 
   cols = ['sku_id', 'color_group', 'dimension_group', 'fix_orientation', 'dg_id', 'cg_dg_id', 'job_number', 'item', 
           'overall_label_width', 'overall_label_length', 'sku_seq', 'rb', 'group_sku', 'group_nato',
-          'sku_quantity', 're_qty', 'header_variable_data|sku_value']
+          'sku_quantity', 're_qty', 'header_variable_data|sku_value', 'wds']
   
   #删除多于列
   drop_cols = []
@@ -42,14 +181,17 @@ def load_and_clean_data(df, input_file=None):
     remove_space_dict[col] = col.replace(' ', '_').lower()
   df.rename(columns=remove_space_dict, inplace=True)
 
-  #处理缺失列
+  #临时性代码
   if 're_qty' not in df.columns:
-    print(f're_qty is missing, use re_qty=sku_qty')
-    df['re_qty'] = df['sku_quantity']
+    print(f're_qty is missing, use re_qty=sku_qty+10')
+    df['re_qty'] = df['sku_quantity']+10
+  if 'wds' not in df.columns:
+    print(f'wds is missing, use wds=1')
+    df['wds'] = 1    
 
   #数据格式标准化
   str_cols = ['color_group', 'dimension_group', 'header_variable_data|sku_value', 'item', 'job_number', 'rb']
-  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 'sku_seq', 're_qty']
+  int_cols = ['fix_orientation', 'group_sku', 'group_nato', 'sku_quantity', 'sku_seq', 're_qty', 'wds']
   double_cols = ['overall_label_length', 'overall_label_width']
   for c in str_cols:
     df[c] = df[c].astype('str')
@@ -77,27 +219,34 @@ def load_and_clean_data(df, input_file=None):
 
 
 def agg_to_get_dg_level_df(sku_level_df):
-  cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length']
-  agg_dict = {'re_qty':'sum'}
+  cols_to_first = ['cg_id', 'dimension_group', 'fix_orientation','overall_label_width', 'overall_label_length', 'wds']
+  agg_dict = {'re_qty':'sum', 'wds':'min'}
   for c in cols_to_first:
     agg_dict[c] = 'first'
-  dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict).reset_index()
+  dg_level_df = sku_level_df.groupby(['cg_dg_id']).agg(agg_dict)#.reset_index()
   return dg_level_df
 
 
-def initialize_input_data(input_file, filter_Color_Group):
+def initialize_input_data(input_mode, filter_Color_Group=[], input_file=None, jobs_dict_list=None):
   """
   :return:
     df_raw: input data before data cleaning;
     df: input data after data cleaning;    
     df_1: aggregated input data at dg level.      
   """
-  df_raw = pd.read_csv(input_file)
+  if input_mode=='csv':
+    df_raw = pd.read_csv(input_file)
+  elif input_mode=='json':
+    df_raw = convert_jobs_input_into_df(jobs_dict_list)
+  else:
+    print(f"undefined input_mode")
+    stop = 1/0
+
   if len(filter_Color_Group)>0:
     df_raw = df_raw[df_raw['Color_Group'].isin(filter_Color_Group)]  
   df = load_and_clean_data(df_raw)
   df_1 = agg_to_get_dg_level_df(df)
-  return df_raw, df, df_1
+  return df, df_1
 
 
 def initialize_dg_level_results(df):

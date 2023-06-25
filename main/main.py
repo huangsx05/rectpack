@@ -1,29 +1,8 @@
 # Databricks notebook source
-#Revision Log
-#20230607: clone from branch 3_mcmd_dev
-#20230607: change to read user params from json instead of databricks widgets
-#20230607: change to read config from json instead of yaml
-#20230607: user directly input add_pds_per_sheet instead of n_color
-#20230607: rewrite main function, rewrite runner_3_mcmd_seperator.py from notebook - for deployment
-#20230607: add post-process part to main notebook
-#committed
-
-# COMMAND ----------
-
-from datetime import datetime
-import json
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from utils.tools import allocate_sku
-from utils.load_data import initialize_input_data, load_config
-from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
-from model.shared_solver import split_abc_ups
-
-# COMMAND ----------
-
-start_time = datetime.now()
-print(start_time)
+      # ppc - iter - minA - maxA
+# 0419: 416 - 404  - 415  - 411
+# 0519: 304 - 276  - 273  - 272
+# 0614: 787 - 763  - 771  - 763
 
 # COMMAND ----------
 
@@ -32,67 +11,88 @@ print(start_time)
 
 # COMMAND ----------
 
-def main():
-  #inputs for main
-  user_params_path = "../config/user_params.json"
-  input_file = '../input/HTL_input_0519.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv',
-  filter_Color_Group = [] #空代表不筛选，全部计算
-  #filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30'],
-  config_path = f"../config/config.json"
-
-  #get user inputs
-  with open(user_params_path, "r", encoding="utf-8") as f:
-    user_params = json.load(f)
-  batching_type = user_params["batching_type"]
-  n_abc = user_params["n_abc"]  
-  n_abc = int(n_abc)  
-  add_pds_per_sheet = user_params["add_pds_per_sheet"]
-  add_pds_per_sheet = int(add_pds_per_sheet)
-  request_type = user_params["request_type"]  
-  sheet_size_list = user_params["sheet_size_list"]
-  sheet_size_list = [sorted([int(i[0]), int(i[1])],reverse=True) for i in sheet_size_list] #严格按照纸张从大到小排序
-
-  #get and update configs
-  params_dict = load_config(config_path)[batching_type]
-  params_dict.update({'user_params':{'add_pds_per_sheet':add_pds_per_sheet,
-                                     'batching_type':batching_type,
-                                     'n_abc':n_abc,
-                                     'request_type':request_type,
-                                     'sheet_size_list':sheet_size_list,
-                                     }})
-  print(params_dict)
-
-  #jobs input
-  df_raw, df, df_1 = initialize_input_data(input_file, filter_Color_Group) #------ 数据清洗部分可以转移到GPM完成
-
-  #main
-  if batching_type=='1_OCOD':
-    pass
-  elif batching_type=='2_OCMD':
-    pass
-  elif batching_type=='3_MCMD_Seperater':  
-    from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
-    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(params_dict, df, df_1)
-  elif batching_type=='4_MCMD_No_Seperater':
-    pass
-  print("done")
-  return df, df_1, params_dict, best_index, best_batch, best_res
-
-if __name__ == "__main__":
-  df, df_3, params_dict, best_index, best_batch, best_res = main()
+pip install sympy
 
 # COMMAND ----------
 
-end_time = datetime.now()
-print(start_time)
-print(end_time)
-print('running time =', (end_time-start_time).seconds, 'seconds')
+import json
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from utils.tools import allocate_sku
+from utils.load_data import convert_jobs_df_to_json, load_user_params, load_config, initialize_input_data, convert_jobs_input_into_df
+from model.shared_solver import split_abc_ups
+
+# COMMAND ----------
+
+#ui inputs
+user_params_path = "../config/ui_inputs.json"
+with open(user_params_path, "r", encoding="utf-8") as f:
+  input_params = json.load(f) 
+print(input_params)
+
+#job inputs
+input_file = '../input/HTL_input_0419.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', 0614
+# filter_Color_Group = [] #空代表不筛选，全部计算
+filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
+
+# COMMAND ----------
+
+def main(input_params):
+  #get user params
+  user_params = load_user_params(input_params)  
+  batching_type = user_params["batching_type"]
+  print(f"batching_type = {batching_type}")
+
+  #get algo config
+  config_path = f"../config/config.json"  
+  params_dict = load_config(config_path)[batching_type]
+  params_dict['user_params'] = user_params
+  for k,v in params_dict.items():
+    print(f"{k}:")
+    for ki, vi in v.items():
+      print(f"  {ki}: {vi}")
+
+  #jobs input
+  # print(f"[{datetime.now()}]: preparing jobs input")
+  input_mode = params_dict['algo_params']['input_mode']
+  print(f"input_mode = {input_mode}")
+  if input_mode == 'csv':
+    df, df_1 = initialize_input_data(input_mode, filter_Color_Group, input_file=input_file) #------ 数据清洗部分可以转移到GPM完成
+  elif input_mode == 'json':
+    input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #JSON IUPUT
+    df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
+  # print(df_1.columns)
+
+  #main
+  start_time = datetime.now() 
+  print(f"[{datetime.now()}]: ------ start main batching ------")
+  #---------------------------------------------------------------------------------------------------------
+  if batching_type == '1_OCOD':
+    pass
+  elif batching_type == '2_OCMD':
+    pass
+  elif batching_type == '3_MCMD_Seperater':  
+    from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
+    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_1)
+  elif batching_type == '4_MCMD_No_Seperater':
+    pass
+  #---------------------------------------------------------------------------------------------------------  
+  print(f"[{datetime.now()}]: ------ end main batching ------")
+  return df, df_1, params_dict, best_index, best_batch, best_res
+
+if __name__ == "__main__":
+  df, df_3, params_dict, best_index, best_batch, best_res = main(input_params)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC 以下仅为结果展示部分
 # MAGIC #### Plot for the best batch
+
+# COMMAND ----------
+
+import matplotlib.pyplot as plt
+from utils.plot import plot_full_height_for_each_dg_with_ink_seperator
 
 # COMMAND ----------
 
@@ -115,7 +115,7 @@ params_dict
 
 # COMMAND ----------
 
-ink_seperator_width = params_dict["business_params"]["ink_seperator_width"]
+ink_seperator_width = int(params_dict["user_params"]["ink_seperator_width"])
 ink_seperator_width
 
 # COMMAND ----------
@@ -187,7 +187,7 @@ display(df_3_3)
 
 # COMMAND ----------
 
-n_abc = params_dict["user_params"]["n_abc"]
+n_abc = int(params_dict["user_params"]["n_abc"])
 
 # COMMAND ----------
 
@@ -240,6 +240,9 @@ for sub_batch_id in best_batch.keys(): #for b0, b1, ...
     df_i_list.append(df_i_sub)
 
 df_3_3_res = pd.concat(df_i_list).sort_values(['sub_batch_id','dimension_group','sku_id','re_qty'])
+df_3_3_res['job_number'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[0])
+df_3_3_res['sku_seq'] = df_3_3_res['sku_id'].apply(lambda x: x.split('<+>')[1])
+df_3_3_res = df_3_3_res[['sub_batch_id', 'dimension_group', 'sku_id', 'job_number', 'sku_seq', 're_qty', 'sku_ups', 'sku_pds', 'Set A Ups']].sort_values(['sub_batch_id', 'dimension_group', 'sku_id'])
 print(f"sum_sku_ups = {np.sum(df_3_3_res['sku_ups'])}")
 print(f"max_sku_ups = {np.max(df_3_3_res['sku_ups'])}")
 display(df_3_3_res)
@@ -285,10 +288,10 @@ for k,v in best_batch.items():
       df_res.loc[df_res['DG']==v[i],'orient'] = 'vertical'
 
 #中离数
-df_res_agg = df_res.groupby(['batch_id'])['Color Group'].count().reset_index()
+df_res_agg = df_res.groupby(['batch_id'])['Color Group'].nunique().reset_index()
 n_seperator_dict = dict(zip(df_res_agg['batch_id'],df_res_agg['Color Group']))
 for k,v in n_seperator_dict.items():
-  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)
+  df_res.loc[df_res['batch_id']==k,'中离数'] = int(v)-1
 
 df_res = df_res.sort_values(['batch_id','Color Group','DG','Req_Qty'])
 display(df_res)
@@ -308,7 +311,7 @@ df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).reset_index()
 metrics_3_3 = np.sum(df_res.groupby(['batch_id']).agg({'weighted_pds':'max'}).values)
 # metrics_3_3 = np.sum(df_3_3_res.groupby(['sub_batch_id']).agg({'weighted_sku_pds':'max'}).values)
 n_batch = df_res['batch_id'].nunique()
-print(f'sum_pds = {metrics_3_3+params_dict["user_params"]["add_pds_per_sheet"]*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
+print(f'sum_pds = {metrics_3_3+int(params_dict["user_params"]["add_pds_per_sheet"])*n_batch}') #在只有一种sheet_size的情况下只看sum_pds
 
 # COMMAND ----------
 

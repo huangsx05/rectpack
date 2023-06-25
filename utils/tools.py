@@ -1,6 +1,27 @@
 import numpy as np
 
 
+def combinations(dg_sorted_list, N, M):
+  #generate all possible combinations
+  for n in range(N**M): #所有可能的组合的个数为N**M
+    combination = [[] for __ in range(M)] #初始化, M是sub_batch数量
+    for i in range(N): #依次加入dg
+      combination[n // M**i % M].append(dg_sorted_list[i]) #one batch
+    combination = [c for c in combination if len(c)>0] #这里c里面的index应该是排好升序的
+    return combination
+
+
+def partitions(A):
+  if not A:
+    yield []
+  else:
+    a, *R = A
+    for partition in partitions(R):
+      yield partition + [[a]]
+      for i, subset in enumerate(partition):
+        yield partition[:i] + [subset + [a]] + partition[i+1:]
+        
+
 def add_sub_batch_id_to_df(df_3_3, batch):
   #revert字典，将batch号加入df_3_3
   batch_revert = {}
@@ -121,7 +142,7 @@ def allocate_sku(sku_qty_dict, n_ups):
 
 
 def get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict):
-  n_abc = params_dict['user_params']['n_abc']
+  n_abc = int(params_dict['user_params']['n_abc'])
   pds_list = [] #每一个dg的最大sku_pds
   for sub_dg_index in range(len(dg_id)): #在每一个dg内部分配做sku的ups分配
     sub_dg = dg_id[sub_dg_index] #dg_id
@@ -137,3 +158,36 @@ def get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict):
       sku_pds_list.append(res_dict[sku_id]['pds'])  
     pds_list.append(np.max(sku_pds_list))
   return pds_list
+
+
+def calculate_best_batch(res_list):
+  assessed_metrics = {}
+  res = {}
+  for i in range(len(res_list)): #一批并行计算的batch
+    for j in range(len(res_list[i])): #batch
+      # print(res_list[i][j])
+      batch_name = list(res_list[i][j].keys())[0]
+      metric = list(res_list[i][j].values())[0]['metric']
+      result = list(res_list[i][j].values())[0]['res']
+      assessed_metrics[batch_name] = metric
+      res[batch_name] = result
+      # print()
+      # print(batch_name)
+      # print(metric)
+      # print(result)
+
+  best_index = min(assessed_metrics, key=assessed_metrics.get)
+  best_res = res[best_index]
+  best_metric = np.min(list(assessed_metrics.values()))
+  # print(f"check_min_metric = {np.min(list(assessed_metrics.values()))}")
+
+  best_batch = {}
+  # print(best_res)
+  for k,v in best_res.items():
+    # print(k,v)
+    if k!='metric':
+      sub_dgs = v['best_comb'].split('<+>')
+      sub_dgs = [i[:-2] for i in sub_dgs] 
+      best_batch[k] = sub_dgs
+
+  return assessed_metrics, best_index, best_batch, best_res, best_metric

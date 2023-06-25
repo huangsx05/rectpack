@@ -1,36 +1,21 @@
 {
   "3_MCMD_Seperater": {
-    "business_params": {
-      "criteria": {
-        "678<+>528": {
-          "pds": 80,
-          "internal_date": 3,
-          "weight": 1
-        },
-        "582<+>482": {
-          "pds": 80,
-          "internal_date": 3,
-          "weight": 1
-        }, 
-        "522<+>328": {
-          "pds": 100,
-          "internal_date": 3,
-          "weight": 0.5
-        }
-      },
-      "ink_seperator_width": 30,                                  
-      "n_color_limit": 5                        
-    },  
     "algo_params": {
-      "criteria_check": 0,
-      "batch_generate_mode": "heuristics_sub_batch_number",
-      "sample_batch_num": 10,
-      "upper_sub_batch_num": 6,
-      "lower_sub_batch_num": 4,
+      "input_mode": "json",
       "layout_mode": "one_dg_one_column", 
-      "layout_tolerance": 1,
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "heuristics_batches_max_area_first": "True",
+      "heuristics_batches_min_area_first": "True",
+      "iterate_all_batches": "True",
+      "iterate_n_dg_threshold": 10,            
+      "iterate_n_cg_threshold": 8,       
+      "all_batch_generate_mode": "combinations",
+      "n_jobs": 8,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
       "algo_time_limit": 60,
-      "timeout_limit": 600                                 
+      "timeout_limit": 36000                                 
     }                 
   }
 }
