@@ -242,8 +242,10 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
   tot_cols = np.min(n_cols_upper_lim) #初始总列数
   tot_cols = np.max([tot_cols, n_dg]) #保证每个dg至少有一列
   # print(f'n_cols heuristics initial solution = {tot_cols}>{np.min(n_cols_upper_lim)}')
-  n_cols = allocate_cols_based_on_qty(tot_cols, n_rows, re_qty) ###--->>>
-  # print(f'n_cols heuristics initial solution after allocation = {n_cols}')
+  n_cols = allocate_cols_based_on_qty(tot_cols, n_rows, re_qty, dg_id, dg_sku_qty_dict, params_dict) ###--->>>
+  print(f'***re_qty = {re_qty}')  
+  print(f'***n_rows = {n_rows}')    
+  print(f'***n_cols heuristics initial solution after allocation = {n_cols}')
 
   #处理edge case
   label_width_sum = sum(np.multiply(n_cols, label_w_list))
@@ -255,12 +257,12 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
   temp_tot_cols = tot_cols
   while label_width_sum < effective_sheet_width:
     temp_tot_cols += 1
-    temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, n_rows, re_qty) ###--->>>
+    temp_n_cols = allocate_cols_based_on_qty(temp_tot_cols, n_rows, re_qty, dg_id, dg_sku_qty_dict, params_dict) ###--->>>
     label_width_sum = sum(np.multiply(temp_n_cols, label_w_list))
     if label_width_sum <= effective_sheet_width: #有效解，更新结果
       tot_cols = temp_tot_cols
       n_cols = temp_n_cols
-  # print(f'n_cols heuristics final solution = {n_cols}')
+  print(f'n_cols heuristics final solution = {n_cols}')
 
   tolerance = int(params_dict['algo_params']['layout_tolerance'])
   if tolerance!=0:
@@ -276,7 +278,7 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
                                                            dg_sku_qty_dict,params_dict, 
                                                            n_cols_search_lower, n_cols_search_upper) ###--->>>
   # print(f"n_cols search range = {n_cols_search_lower},{n_cols_search_upper}")  
-  # print(f"n_cols best solution = {n_cols}")
+  print(f"n_cols best solution = {n_cols}")
   ups_list = list(np.multiply(n_cols, n_rows))
   # pds_list = [np.ceil(a/b) for a, b in zip(re_qty, ups_list)]
   # print(f'n_rows={n_rows}, n_cols={n_cols}, ups={ups_list}, pds={pds_list}')  

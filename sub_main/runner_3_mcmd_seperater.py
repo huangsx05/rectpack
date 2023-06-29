@@ -9,18 +9,25 @@ from utils.tools import calculate_best_batch
 def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   #数据接口
   df_3.rename(columns={'dimension_group':'dg_id'},inplace=True)
+  # print(f"df_3['dg_id'] = {df_3['dg_id'].unique}")
+  # stop
 
   #get params
+  internal_days_limit = int(params_dict['user_params']['internal_days'])  
+  n_abc = int(params_dict['user_params']['n_abc'])   
   algo_time_limit = int(params_dict['algo_params']['algo_time_limit'])
-  ink_seperator_width = int(params_dict['user_params']['ink_seperator_width'])
-  n_abc = int(params_dict['user_params']['n_abc'])
-  n_color_limit = np.max([int(v['n_color_limit']) for v in params_dict['user_params']['sheets'].values()]) #仅用于初筛，非最终值
-  internal_days_limit = int(params_dict['user_params']['internal_days'])
   n_jobs = int(params_dict['algo_params']['n_jobs'])
   n_sample_per_job = int(params_dict['algo_params']['n_sample_per_job'])
   sample_batch_num = int(params_dict['algo_params']['sample_batch_num'])
   sample_batch_num = max(sample_batch_num, n_jobs*n_sample_per_job)
   print(f"sample_batch_num = {sample_batch_num }, n_jobs = {n_jobs}")
+
+  batching_type = params_dict['user_params']["batching_type"]
+  if batching_type in ["1_OCOD", "2_OCMD"]:  
+    ink_seperator_width = 0
+  elif batching_type in ["3_MCMD_Seperater", "4_MCMD_No_Seperater"]:
+    ink_seperator_width = int(params_dict['user_params']['ink_seperator_width'])
+    n_color_limit = np.max([int(v['n_color_limit']) for v in params_dict['user_params']['sheets'].values()]) #仅用于初筛，非最终值
   
   #dg_sku_qty_dict
   dg_sku_qty_dict = {}
@@ -34,6 +41,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   #为了后面的加速和标准化，这里给出的batches_list应该符合以下要求：
   #1) sub_batch按照长度降序; #2) dg_id升序
   heuristics_batches_list = []
+  # 到这
   run_maxA = params_dict['algo_params']['heuristics_batches_max_area_first']
   run_minA = params_dict['algo_params']['heuristics_batches_min_area_first']
 
@@ -59,6 +67,11 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     # for h in batches_list_minA:
     #   print(h)
 
+  # heuristics_batches_list = [
+  # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
+  # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
+  # ]
+
   #heuristics results
   # print(heuristics_batches_list[0])   
   best_metric = 1e12
@@ -70,6 +83,8 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   pre_n_count = 0
   n_count = len(heuristics_batches_list)
   print(f"heuristics batch sample = {heuristics_batches_list[0]}")
+  # temp_res = calculate_one_batch(0, pre_n_count, heuristics_batches_list, df_3, best_metric, params_dict, dg_sku_qty_dict)
+  # stop
   heuristics_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, pre_n_count, heuristics_batches_list, 
                                                                         df_3, best_metric, params_dict, dg_sku_qty_dict)
                                            for batch_i in range(pre_n_count, n_count))
@@ -122,18 +137,18 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
       #   print(h)   
 
 
-  # #sample batch 输入
+  # # #sample batch 输入
   # batches_list = [
-  # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']} #276 -273
-  # # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}, # - 404 - 415
-  # # # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_088', 'dg_091'], 'b4': ['dg_086']} # - 405
+  # # {'b0': ['dg_10', 'dg_11', 'dg_12', 'dg_13'], 'b1': ['dg_02'], 'b2': ['dg_01', 'dg_04', 'dg_09'], 'b3': ['dg_03', 'dg_05', 'dg_08'], 'b4': ['dg_06', 'dg_07']} #276 -273
+  # # # # {'b0': ['dg_087', 'dg_098', 'dg_099'], 'b1': ['dg_088', 'dg_091'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_094', 'dg_095'], 'b4': ['dg_086']}, # - 404 - 415
+  # # # # {'b0': ['dg_095', 'dg_098', 'dg_099'], 'b1': ['dg_087', 'dg_094'], 'b2': ['dg_084', 'dg_093'], 'b3': ['dg_088', 'dg_091'], 'b4': ['dg_086']} # - 405
   # ]
   # ppc_batch = [
   # # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
-  # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
+  # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
   # ]
   # batches_list = ppc_batch+batches_list+heuristics_batches_list
-  # batches_list = [{'b0': ['dg_086', 'dg_087', 'dg_088', 'dg_094'], 'b1': ['dg_095', 'dg_098', 'dg_099'], 'b2': ['dg_093'], 'b3': ['dg_091'], 'b4': ['dg_084']}]
+  # # # batches_list = [{'b0': ['dg_086', 'dg_087', 'dg_088', 'dg_094'], 'b1': ['dg_095', 'dg_098', 'dg_099'], 'b2': ['dg_093'], 'b3': ['dg_091'], 'b4': ['dg_084']}]
 
 
   #iterative results
@@ -181,6 +196,8 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
       #                                               best_metric, params_dict, dg_sku_qty_dict)
       #   res_list.append(temp_res)
 
+      # print(f"testing one run******")
+      # stop
       # best_metric, temp_res = calculate_one_batch(0, pre_n_count, batches, df_3, best_metric, params_dict, dg_sku_qty_dict)
       # print(f"best_metric={best_metric}")
       # print(f"temp_res={temp_res}")

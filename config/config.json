@@ -11,6 +11,7 @@
       "iterate_n_dg_threshold": 10,            
       "iterate_n_cg_threshold": 8,       
       "all_batch_generate_mode": "combinations",
+      "optimize_pds_level": "sku",
       "n_jobs": 8,
       "n_sample_per_job": 4,
       "sample_batch_num": 8,      
