@@ -54,8 +54,15 @@ def allocate_cols_based_on_qty(tot_n_cols, n_rows, qty_list, dg_id, dg_sku_qty_d
   
   while np.sum(n_cols)<tot_n_cols:
     ups_list = list(np.multiply(n_cols, n_rows))
-    # pds_list = [np.ceil(a/b) for a, b in zip(qty_list, ups_list)]    
-    pds_list = get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict)
+    optimize_pds_level = params_dict['algo_params']['optimize_pds_level']
+    if optimize_pds_level=='dg':
+      pds_list = [np.ceil(a/b) for a, b in zip(qty_list, ups_list)]   
+    elif optimize_pds_level=='sku':       
+      pds_list = get_max_sku_pds_for_each_dg(dg_id, ups_list, dg_sku_qty_dict,params_dict)
+    else:
+      print('unrecognized optimize_pds_level!!!')
+      stop = 1/0
+
     n_max_index = np.argmax(pds_list)
     n_cols[n_max_index] += 1
   assert tot_n_cols == np.sum(n_cols)
