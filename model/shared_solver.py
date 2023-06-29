@@ -362,7 +362,7 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
 
   #遍历sheet_size
   for sheet_size in sheet_size_list:
-    # print(f'sheet_size={sheet_size}')
+    print(f'sheet_size={sheet_size}')
     #get sheet_weight
     sheet_name = str(int(sheet_size[0]))+'<+>'+str(int(sheet_size[1]))
     sheet_weight = float(criteria_dict[sheet_name]['weight'])
@@ -427,7 +427,7 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
   for comb_index in range(len(comb_names)):
     #准备输入数据
     comb_name = comb_names[comb_index]
-    # print(f'{comb_name} - iterate_to_solve_min_total_sheet_area for comb')
+    print(f'{comb_name} - iterate_to_solve_min_total_sheet_area for comb')
     label_w_list = comb_res_w[comb_index].split('<+>')
     label_w_list = [float(w) for w in label_w_list]
     label_h_list = comb_res_h[comb_index].split('<+>')
@@ -555,6 +555,7 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   """
   for parallel computation
   """
+  # print(f"df_3['dg_id'] = {df_3['dg_id'].unique}")
   metric = 0
   res_batch = {}
   break_flag = 0 #用于控制结果不可能更优时退出当前batch  
@@ -565,6 +566,7 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   #获得batch
   batch_name = 'batch_'+str(batch_i)
   batch = batches[batch_i-pre_n_count] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095'], 'b1': ['dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+  print()
   print(f"batch = {batch}")
 
   #获得dg和sub_batch_id的对应关系
@@ -576,11 +578,16 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   for k,v in batch.items():
     batch_revert.update(dict(zip(v, [k]*len(v))))
   df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
+  # print(f"batch_revert={batch_revert}")
+  # print(f"df_3['dg_id'] = {df_3['dg_id'].unique}")
+  # print(f"df_3['batch_id'] = {df_3['batch_id'].unique}")  
 
   #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
   temp_sub_batch_metric = 0 #用于不满足条件时尽早结束计算
   for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
     df_i = df_3[df_3['batch_id']==batch_id].sort_values(['dg_id']) #按照dg_id排序 - 这个很重要，保证所有数据的对应性
+    print(f"sub_batch_id = {batch_id}")
+    # print(f"len(df_i) = {len(df_i)}")
     cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
     # if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
     #   print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
@@ -595,6 +602,9 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
     re_qty = df_i['re_qty'].values.tolist()
 
     #穷举该sub_batch所有rotation可能性的组合
+    # print(f"batch_id = {batch_id}")
+    # print(f"dg_id = {dg_id}")    
+    # print(f"fix_orientation = {fix_orientation}")        
     comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id, fix_orientation, label_width, label_length)
 
     #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb

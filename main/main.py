@@ -35,6 +35,7 @@ print(input_params)
 input_file = '../input/HTL_input_0419.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', 0614
 # filter_Color_Group = [] #空代表不筛选，全部计算
 filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
+# filter_Color_Group = ['CG_35']
 
 # COMMAND ----------
 
@@ -62,7 +63,7 @@ def main(input_params):
   elif input_mode == 'json':
     input_params = convert_jobs_df_to_json(input_params, input_file, filter_Color_Group) #JSON IUPUT
     df, df_1 = initialize_input_data(input_mode, filter_Color_Group, jobs_dict_list=input_params['jobInfo'])
-  # print(df_1.columns)
+  # display(df_1)
 
   #main
   start_time = datetime.now() 
