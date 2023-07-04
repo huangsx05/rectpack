@@ -1,0 +1,22 @@
+{
+  "requestType":"1_Batching_Stepping",
+  "batchingType":"1_OCOD",
+  "color":"1",  
+  "setUpPerBatch":"7",
+  "setUpPerInkSeperator":"2",  
+  "setOfPlates":"1",
+  "pressType":"2_INDIGO",  
+  "filmSize":"678,528,5,10,1/582,482,5,10,1/528,328,5,10,0.5",
+  "minWidthandLength":"25",
+  "minMiddleCGWidth":"85",  
+  "separatorWidth":"30",
+  "internalDays":"4",
+  "runWaste":{
+    "1,50":"INDIGO,7",
+    "51,100":"INDIGO,6.6",
+    "101,150":"INDIGO,5.8",
+    "151,200":"INDIGO,5.8",    
+    "201,300":"INDIGO,5.5",
+    "301,9999999":"INDIGO,5.5"
+    }          
+}

@@ -1,4 +1,18 @@
 {
+  "1_OCOD": {
+    "algo_params": {
+      "input_mode": "json",
+      "layout_mode": "one_dg_one_column", 
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "optimize_pds_level": "sku",
+      "n_jobs": 8,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
+      "algo_time_limit": 60,
+      "timeout_limit": 36000                                 
+    }                 
+  },  
   "3_MCMD_Seperater": {
     "algo_params": {
       "input_mode": "json",

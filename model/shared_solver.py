@@ -401,21 +401,25 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     if machine=="ATMA" or machine=="Sakurai":
       sub_metric_color_pds = (color+1)*3.5
     elif machine=="INDIGO":
-      sub_metric_color_pds = (color+1)*3.5 + color*2   
+      sub_metric_color_pds = (color+1)*3.5 + color*2  
+    sub_metric_color_pds = np.ceil(sub_metric_color_pds)   
 
     #metric_2.2: 中离损耗
     setUpPerInkSeperator = int(params_dict['user_params']['setUpPerInkSeperator'])
     sub_metric_ink_sep_pds = (len(set(cg_id))-1)*setUpPerInkSeperator #固定一个中离给两张损耗
+    sub_metric_ink_sep_pds = np.ceil(sub_metric_ink_sep_pds)    
 
     #metric_3: Process Scrap 
     if machine=="ATMA" or machine=="Sakurai":
       sub_metric_process_scrap_pds = pds*runWaste
     elif machine=="INDIGO":
       sub_metric_process_scrap_pds = pds*(runWaste+0.058) 
+    sub_metric_process_scrap_pds = np.ceil(sub_metric_process_scrap_pds)        
 
     #总目标
     tot_area = (pds+sub_metric_color_pds+sub_metric_ink_sep_pds+sub_metric_process_scrap_pds)*sheet_weight
-    # tot_area += (sub_metric_ink_sep_pds)    
+    # tot_area += (sub_metric_ink_sep_pds) 
+    tot_area = np.ceil(tot_area)   
     metrics_dict = {'machine':machine,
                     'runWaste':runWaste,
                     'pds':pds, 
@@ -669,7 +673,7 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
     #考虑pds和sheet_weight
     metric += v['min_tot_area'] #metric_1.1: pds*weight
   #再考虑版数和pds之间的权衡
-  add_metric = len(res_batch)*add_pds_per_sheet
+  add_metric = np.ceil(len(res_batch)*add_pds_per_sheet)
   metric += add_metric #metric_1.2: 版数  
 
   # if metric < best_metric:
