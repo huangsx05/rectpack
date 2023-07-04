@@ -248,7 +248,39 @@ def get_n_cols_for_dg_comb_on_one_sheetsize(dg_id,cg_id,label_w_list,label_h_lis
   print(f'***n_cols heuristics initial solution after allocation = {n_cols}')
 
   #处理edge case
-  label_width_sum = sum(np.multiply(n_cols, label_w_list))
+  #处理25mm limit
+  agg_width = np.multiply(n_cols, label_w_list)
+  minWidthandLength = float(params_dict['user_params']['min_single_col_width'])
+  print(f"dg_id = {dg_id}")  
+  print(f"cg_id = {cg_id}")  
+  print(f"agg_width after 25mm limit = {agg_width}")
+
+  #处理中间CG的85mm limit
+  if n_cg>2:
+    agg_width = [max(i,minWidthandLength) for i in agg_width]
+    minMiddleCGWidth = float(params_dict['user_params']['minMiddleCGWidth'])
+    #当前每个cg的width
+    cg_agg_width = {}
+    for cg in cg_id:
+      cg_agg_width[cg] = 0
+    for i in range(len(dg_id)):
+      cg = cg_id[i]
+      cg_agg_width[cg] += agg_width[i]
+    #处理85mm limit
+    final_cg_width = {}
+    non_assign_cg_width = {k:v for k,v in cg_agg_width.items()}
+    for i in range(2):
+      minValueKey = min(non_assign_cg_width, key=non_assign_cg_width.get)
+      final_cg_width[minValueKey] = non_assign_cg_width[minValueKey]
+      del non_assign_cg_width[minValueKey]
+    for k,v in non_assign_cg_width.items():
+      final_cg_width[k] = max(minMiddleCGWidth, non_assign_cg_width[k])
+    print(f"agg_width after 85mm limit = {final_cg_width}")  
+    label_width_sum = sum(list(final_cg_width.values()))
+  else:
+    label_width_sum = sum(agg_width)
+
+  #check overall width
   if label_width_sum > effective_sheet_width:
     can_layout = False
     return can_layout, n_rows, n_cols, [], []

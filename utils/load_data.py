@@ -7,10 +7,15 @@ def load_user_params(input_params):
   user_params['request_type'] = input_params['requestType']
   user_params["batching_type"] = input_params['batchingType']
   user_params["add_pds_per_sheet"] = input_params['setUpPerBatch']
+  user_params["color"] = input_params['color']
+  user_params["setUpPerInkSeperator"] = input_params['setUpPerInkSeperator']  
   user_params["n_abc"] = input_params['setOfPlates']
+  user_params["pressType"] = input_params['pressType']  
   user_params["min_single_col_width"] = input_params['minWidthandLength']
+  user_params["minMiddleCGWidth"] = input_params['minMiddleCGWidth']    
   user_params["ink_seperator_width"] = input_params['separatorWidth']
   user_params["internal_days"] = input_params['internalDays']
+  user_params["runWaste"] = input_params['runWaste']
 
   #考虑：如果可以直接判断某个sheet_size没有用，可以在这里排除
   sheet_input_list = input_params["filmSize"].split('/')

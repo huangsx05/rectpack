@@ -1,6 +1,6 @@
 import numpy as np
 from datetime import datetime
-from utils.tools import combinations, partitions, get_all_dg_combinations_with_orientation
+from utils.tools import combinations, partitions, get_all_dg_combinations_with_orientation, get_machine_run_waste_from_pds
 from model.ocmd_solver import get_ups_layout_for_ocmd_comb_on_one_sheetsize
 from model.mcmd_solver import get_n_cols_for_dg_comb_on_one_sheetsize
 
@@ -387,8 +387,40 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     # print(f'dg_id={dg_id}, re_qty={re_qty}, ups_list={ups_list}')
 
     #判断当前结果是否更优
-    metric = np.max(pds_list)
-    tot_area = metric*sheet_weight
+    pds = np.max(pds_list) #metric_1: pds
+    # tot_area = metric*sheet_weight #pds
+    run_waste_dict = params_dict['user_params']['runWaste']
+    machine, runWaste = get_machine_run_waste_from_pds(pds, run_waste_dict)
+
+    #metric_2.1: setup scrap - 调机损耗
+    # pressType = params_dict['user_params']['pressType']    
+    color = int(params_dict['user_params']['color']) #注意这里的color和cg不一样
+    if machine=="ATMA" or machine=="Sakurai":
+      sub_metric_color_pds = (color+1)*3.5
+    elif machine=="INDIGO":
+      sub_metric_color_pds = (color+1)*3.5 + color*2   
+
+    #metric_2.2: 中离损耗
+    setUpPerInkSeperator = int(params_dict['user_params']['setUpPerInkSeperator'])
+    sub_metric_ink_sep_pds = (len(set(cg_id))-1)*setUpPerInkSeperator #固定一个中离给两张损耗
+
+    #metric_3: Process Scrap 
+    if machine=="ATMA" or machine=="Sakurai":
+      sub_metric_process_scrap_pds = pds*runWaste
+    elif machine=="INDIGO":
+      sub_metric_process_scrap_pds = pds*(runWaste+0.058) 
+
+    #总目标
+    tot_area = (pds+sub_metric_color_pds+sub_metric_ink_sep_pds+sub_metric_process_scrap_pds)*sheet_weight
+    # tot_area += (sub_metric_ink_sep_pds)    
+    metrics_dict = {'machine':machine,
+                    'runWaste':runWaste,
+                    'pds':pds, 
+                    'setup_scrap_per_plate':sub_metric_color_pds, 
+                    'setup_scrap_per_inkSep':sub_metric_ink_sep_pds,
+                    'process_scrap':sub_metric_process_scrap_pds,
+                    'weighted_total_material':tot_area}
+
     # print(f'sheet_size={sheet_size}, metric={tot_area}')    
     if tot_area<min_tot_area:
       min_tot_area = tot_area
@@ -396,6 +428,7 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
       best_res['re_qty'] = re_qty      
       best_res['ups'] = ups_list
       best_res['pds'] = pds_list
+      best_res['metrics'] = metrics_dict      
       if mode=='one_dg_one_column': 
         best_res['n_rows'] = n_rows
         best_res['n_cols'] = n_cols    
@@ -457,96 +490,96 @@ def iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg
   return best_comb, best_sheet, best_res, min_tot_area#, best_sku_pds, df_sku_res
 
 
-def iterate_to_find_best_batch(batches_dict, df_3,
-                               n_current, n_count, 
-                               best_metric, best_index, best_batch, best_res,
-                               params_dict, dg_sku_qty_dict
-                               ):
-  # 当前函数会用到的params
-  add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
+# def iterate_to_find_best_batch(batches_dict, df_3,
+#                                n_current, n_count, 
+#                                best_metric, best_index, best_batch, best_res,
+#                                params_dict, dg_sku_qty_dict
+#                                ):
+#   # 当前函数会用到的params
+#   add_pds_per_sheet = params_dict['user_params']['add_pds_per_sheet']
 
-  #sample batches_dict
-  #{'batch_0': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}, 
-  # 'batch_1': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091'], 'b1': ['dg_086', 'dg_088']}}
-  for i in range(len(batches_dict)):
-    break_flag = 0 #用于控制结果不可能更优时退出当前batch
-    #获得batch
-    batch_name = 'batch_'+str(n_current)
-    res_batch = {}
-    batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
-    print(f'{n_current}/{n_count} - {batch}')
-    n_current += 1
+#   #sample batches_dict
+#   #{'batch_0': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}, 
+#   # 'batch_1': {'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091'], 'b1': ['dg_086', 'dg_088']}}
+#   for i in range(len(batches_dict)):
+#     break_flag = 0 #用于控制结果不可能更优时退出当前batch
+#     #获得batch
+#     batch_name = 'batch_'+str(n_current)
+#     res_batch = {}
+#     batch = batches_dict[batch_name] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095', 'dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
+#     print(f'{n_current}/{n_count} - {batch}')
+#     n_current += 1
 
-    #获得dg和sub_batch_id的对应关系
-    batch_revert = {}
-    for k,v in batch.items():
-      for i in v:
-        batch_revert[i] = k #dg和batch的对应关系
-    df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
-    # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
+#     #获得dg和sub_batch_id的对应关系
+#     batch_revert = {}
+#     for k,v in batch.items():
+#       for i in v:
+#         batch_revert[i] = k #dg和batch的对应关系
+#     df_3['batch_id'] = df_3['dg_id'].apply(lambda x: batch_revert[x])
+#     # display(df_3.sort_values(['batch_id','cg_id','dg_id']))
 
-    #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
-    temp_sub_batch_metric = 0 #用于不满足条件时尽早结束计算
-    for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
-      # print(f'sub_batch = {batch_id}, iterate to find best dg_rotate_comb and best sheet_size')
-      #获得数据子集
-      df_i = df_3[df_3['batch_id']==batch_id].sort_values(['dg_id']) #按照dg_id排序 - 这个很重要，保证所有数据的对应性
-      # display(df_i)
-      # #过滤不符合color limit的batch - filter batch时已考虑
-      cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
-      # if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
-      #   print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
-      #   break_flag = 1
-      #   break
-      #准备输入数据
-      dg_id = df_i['dg_id'].values.tolist()
-      fix_orientation = df_i['fix_orientation'].values.tolist()
-      label_width = df_i['overall_label_width'].values.tolist()
-      label_length = df_i['overall_label_length'].values.tolist()
-      re_qty = df_i['re_qty'].values.tolist()
+#     #遍历sub_batch: 对每一个sub_batch，找到中离方案最优解
+#     temp_sub_batch_metric = 0 #用于不满足条件时尽早结束计算
+#     for batch_id in batch.keys(): #这里的batch_id是sub_batch_id
+#       # print(f'sub_batch = {batch_id}, iterate to find best dg_rotate_comb and best sheet_size')
+#       #获得数据子集
+#       df_i = df_3[df_3['batch_id']==batch_id].sort_values(['dg_id']) #按照dg_id排序 - 这个很重要，保证所有数据的对应性
+#       # display(df_i)
+#       # #过滤不符合color limit的batch - filter batch时已考虑
+#       cg_id = df_i['cg_id'].values.tolist() #cg相同的必须相邻
+#       # if len(set(cg_id))>n_color_limit: #这里可以优化代码效率，因为目前是算到color大于limit的sub_batch才会break, 前面的sub_batch还是被计算了
+#       #   print(f'ERROR: nunique_color > {n_color_limit}, skip this case')
+#       #   break_flag = 1
+#       #   break
+#       #准备输入数据
+#       dg_id = df_i['dg_id'].values.tolist()
+#       fix_orientation = df_i['fix_orientation'].values.tolist()
+#       label_width = df_i['overall_label_width'].values.tolist()
+#       label_length = df_i['overall_label_length'].values.tolist()
+#       re_qty = df_i['re_qty'].values.tolist()
 
-      #穷举该sub_batch所有rotation可能性的组合
-      comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,label_length)
+#       #穷举该sub_batch所有rotation可能性的组合
+#       comb_names, comb_res_w, comb_res_h = get_all_dg_combinations_with_orientation(dg_id,fix_orientation,label_width,label_length)
 
-      #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
-      #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
-      best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
-                                                                                      dg_sku_qty_dict, params_dict
-                                                                                      ) ###--->>>
-      max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
-      sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
-      sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
-      temp_sub_batch_metric += max_pds*sheet_weight
+#       #遍历所有comb和sheet_size，选择对于该sub_batch最优的sheet_size和rotation_comb
+#       #这里min_tot_area只是一个代称，其实指的是metric，不一定是基于面积
+#       best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, dg_id, cg_id, re_qty, 
+#                                                                                       dg_sku_qty_dict, params_dict
+#                                                                                       ) ###--->>>
+#       max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
+#       sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
+#       sheet_weight = params_dict['user_params']['sheets'][sheet_name]['weight']
+#       temp_sub_batch_metric += max_pds*sheet_weight
 
-      if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
-        break_flag = 1
-        print('temp_sub_batch_metric>best_metric')
-        break
+#       if temp_sub_batch_metric>best_metric: #虽然还没有计算完,但是结果已经不可能更好
+#         break_flag = 1
+#         print('temp_sub_batch_metric>best_metric')
+#         break
 
-      res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 'min_tot_area':min_tot_area}
+#       res_batch[batch_id] = {'best_comb':best_comb, 'best_sheet':best_sheet, 'best_res':res, 'max_pds':max_pds, 'min_tot_area':min_tot_area}
 
-    if break_flag == 1:
-      continue
+#     if break_flag == 1:
+#       continue
 
-    #计算当前batch的指标, 更新最优指标
-    metric = 0
-    # temp_metric=0
-    for k,v in res_batch.items():
-      #考虑pds和sheet_weight
-      metric += v['min_tot_area']
-    #再考虑版数和pds之间的权衡
-    add_metric = len(res_batch)*add_pds_per_sheet
-    metric += add_metric
+#     #计算当前batch的指标, 更新最优指标
+#     metric = 0
+#     # temp_metric=0
+#     for k,v in res_batch.items():
+#       #考虑pds和sheet_weight
+#       metric += v['min_tot_area']
+#     #再考虑版数和pds之间的权衡
+#     add_metric = len(res_batch)*add_pds_per_sheet
+#     metric += add_metric
 
-    if metric<best_metric:
-      best_metric = metric
-      best_index = batch_name
-      best_batch = batch      
-      best_res = res_batch
+#     if metric<best_metric:
+#       best_metric = metric
+#       best_index = batch_name
+#       best_batch = batch      
+#       best_res = res_batch
 
-    print(f'metric for {batch_name} = {metric}; current best metric = {best_metric}, current best batch = {best_index}')
+#     print(f'metric for {batch_name} = {metric}; current best metric = {best_metric}, current best batch = {best_index}')
 
-  return n_current, best_metric, best_index, best_batch, best_res
+#   return n_current, best_metric, best_index, best_batch, best_res
 
 
 def calculate_one_batch(batch_i, pre_n_count, batches, df_3, 
@@ -628,10 +661,10 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   #计算当前batch的指标, 更新最优指标
   for k,v in res_batch.items():
     #考虑pds和sheet_weight
-    metric += v['min_tot_area']
+    metric += v['min_tot_area'] #metric_1.1: pds*weight
   #再考虑版数和pds之间的权衡
   add_metric = len(res_batch)*add_pds_per_sheet
-  metric += add_metric
+  metric += add_metric #metric_1.2: 版数  
 
   # if metric < best_metric:
   #   best_metric = metric

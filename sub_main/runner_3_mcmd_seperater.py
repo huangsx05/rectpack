@@ -68,7 +68,9 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
     #   print(h)
 
   # heuristics_batches_list = [
-  # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
+  # {'b0': ['dg_06', 'dg_07'], 'b1': ['dg_05'], 'b2': ['dg_04'], 'b3': ['dg_03'], 'b4': ['dg_01','dg_02']} #0614 ppc 
+  # # {'b0': ['dg_06', 'dg_07'], 'b1': ['dg_05'], 'b2': ['dg_04'], 'b3': ['dg_03'], 'b4': ['dg_02'], 'b5': ['dg_01']} #0614 algo total_material best
+  # # {'b0':['dg_01','dg_02','dg_03','dg_04'],'b1':['dg_05','dg_06','dg_07','dg_08','dg_09'],'b2':['dg_10'],'b3':['dg_11'],'b4':['dg_12','dg_13'] } #ppc solution - 0519
   # # {'b0':['dg_084','dg_086'],'b1':['dg_087','dg_088'],'b2':['dg_091','dg_093'],'b3':['dg_094','dg_095','dg_098','dg_099']} #ppc solution -416- 0419
   # ]
 
@@ -82,7 +84,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   res_list = []
   pre_n_count = 0
   n_count = len(heuristics_batches_list)
-  print(f"heuristics batch sample = {heuristics_batches_list[0]}")
+  print(f"heuristics batch sample of {n_count} = {heuristics_batches_list[0]}")
   # temp_res = calculate_one_batch(0, pre_n_count, heuristics_batches_list, df_3, best_metric, params_dict, dg_sku_qty_dict)
   # stop
   heuristics_res = Parallel(n_jobs=n_jobs)(delayed(calculate_one_batch)(batch_i, pre_n_count, heuristics_batches_list, 

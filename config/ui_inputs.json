@@ -1,10 +1,33 @@
 {
   "requestType":"1_Batching_Stepping",
   "batchingType":"3_MCMD_Seperater",
+  "color":"1",  
   "setUpPerBatch":"7",
+  "setUpPerInkSeperator":"2",  
   "setOfPlates":"1",
-  "filmSize":"678,528,5,10,1/528,328,5,10,0.5",
+  "pressType":"1_ATMA_Sakurai",  
+  "filmSize":"678,528,5,10,1/582,482,5,10,1/528,328,5,10,0.5",
   "minWidthandLength":"25",
+  "minMiddleCGWidth":"85",  
   "separatorWidth":"30",
-  "internalDays":"4"
+  "internalDays":"4",
+  "runWaste":{
+    "1,50":"ATMA,6",
+    "51,100":"ATMA,6",
+    "101,150":"ATMA,6",
+    "151,200":"ATMA,6",    
+    "201,300":"Sakurai,3",
+    "301,400":"Sakurai,3.3",
+    "401,500":"Sakurai,3.5",
+    "501,600":"Sakurai,3.6",     
+    "601,700":"Sakurai,3.6",
+    "701,800":"Sakurai,3.6",
+    "801,900":"Sakurai,3.65",
+    "901,1000":"Sakurai,3.7",        
+    "1001,1500":"Sakurai,3.9",     
+    "1501,2000":"Sakurai,3.9",
+    "2001,2500":"Sakurai,4.04",
+    "2501,3000":"Sakurai,4.02",
+    "3001,9999999":"Sakurai,4.29"
+    }          
 }

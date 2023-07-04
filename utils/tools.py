@@ -200,3 +200,15 @@ def calculate_best_batch(res_list):
       best_batch[k] = sub_dgs
 
   return assessed_metrics, best_index, best_batch, best_res, best_metric
+
+
+def get_machine_run_waste_from_pds(pds, run_waste_dict):
+  for k,v in run_waste_dict.items():
+    pds_lower = int(k.split(',')[0])
+    pds_upper = int(k.split(',')[1])
+    if pds>=pds_lower and pds<=pds_upper:
+      machine = v.split(',')[0]
+      runWaste = float(v.split(',')[1])/100
+      print(pds_lower, pds_upper, machine, runWaste)
+      break
+  return machine, runWaste
