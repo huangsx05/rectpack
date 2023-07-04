@@ -28,7 +28,9 @@ def load_user_params(input_params):
   for i in sheet_input_list:
     sheet_name = str(i[0])+'<+>'+str(i[1])
     sheet_weight = i[4]    
-    if batching_type=='3_MCMD_Seperater':
+    if batching_type in ['1_OCOD', '2_OCMD']:
+      n_color_limit = 1    
+    elif batching_type=='3_MCMD_Seperater':
       n_color_limit = i[2]
     elif batching_type=='4_MCMD_No_Seperater':
       n_color_limit = i[3]      

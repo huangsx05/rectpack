@@ -391,6 +391,9 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     # tot_area = metric*sheet_weight #pds
     run_waste_dict = params_dict['user_params']['runWaste']
     machine, runWaste = get_machine_run_waste_from_pds(pds, run_waste_dict)
+    #只有ATMA可以有中离
+    if machine!="ATMA" and len(set(cg_id))>1:
+      continue
 
     #metric_2.1: setup scrap - 调机损耗
     # pressType = params_dict['user_params']['pressType']    
@@ -599,8 +602,8 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   #获得batch
   batch_name = 'batch_'+str(batch_i)
   batch = batches[batch_i-pre_n_count] #{'b0': ['dg_087', 'dg_099', 'dg_084', 'dg_098', 'dg_095'], 'b1': ['dg_094', 'dg_093', 'dg_091', 'dg_086', 'dg_088']}
-  print()
-  print(f"batch = {batch}")
+  # print()
+  # print(f"batch = {batch}")
 
   #获得dg和sub_batch_id的对应关系
   batch_revert = {}
@@ -645,7 +648,10 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
     best_comb, best_sheet, res, min_tot_area = iterate_to_solve_min_total_sheet_area(comb_names, comb_res_w, comb_res_h, 
                                                                                      dg_id, cg_id, re_qty, dg_sku_qty_dict, params_dict)
 
-    max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
+    try:
+      max_pds = np.max(res['pds']) #这里是基于sku的max_pds    
+    except:
+      max_pds = 1e12
     # sheet_name = str(int(best_sheet[0]))+'<+>'+str(int(best_sheet[1]))
     # sheet_weight = float(params_dict['user_params']['sheets'][sheet_name]['weight'])
     # temp_sub_batch_metric += (add_pds_per_sheet+max_pds*sheet_weight)

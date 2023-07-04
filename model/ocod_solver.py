@@ -3,6 +3,19 @@ import numpy as np
 import pandas as pd
 # from rectpack import newPacker
 
+
+def get_batches_ocod(df_3):
+  dg_list = sorted(df_3['dg_id'].unique())
+  batches_list = [] #只有一种batch的可能
+  batch_dict = {}
+  for index in range(len(dg_list)): #一个dg一个batch
+    sub_batch = [dg_list[index]]
+    batch_dict['b'+str(index)] = sub_batch  
+  batches_list.append(batch_dict)  
+
+  return batches_list
+
+
 # -------------------------------------
 # ------ 1. ONE COLOR ONE DIMENSION ------
 # -------------------------------------
