@@ -5,6 +5,65 @@ from utils.tools import allocate_cols_based_on_qty
 # ------ 2. ONE COLOR MORE DIMENSION ------
 # -------------------------------------
 
+
+def get_batches_ocmd(df_3,internal_days_limit):
+  dg_sorted_list = sorted(df_3['dg_id'].unique())  
+  dg_cg_dict = dict(zip(df_3['dg_id'], df_3['cg_id']))
+  dg_wds_dict = dict(zip(df_3['dg_id'], df_3['wds']))  #for internal dates    
+  cg_list = sorted(df_3['cg_id'].unique())
+  all_batches = []
+  for cg in cg_list:
+    #该CG下的DG
+    dg_list = []
+    for k,v in dg_cg_dict.items():
+      if v==cg:
+        dg_list.append(k)
+    #获得DG batch的所有可能性
+    batches_list = [] #存储待进行计算的batches(过滤不合格的batches之后)
+    v_set_list = []   #for去重
+    N = len(dg_list)
+    M = len(dg_list)    
+    for n in range(N**M): #所有可能的组合的个数为N**M
+      combination = [[] for __ in range(M)] #初始化, M是sub_batch数量
+      for i in range(N):
+        combination[n // M**i % M].append(i) 
+      combination = [c for c in combination if len(c)>0] #这里的c应该是排好序的
+      #过滤条件1：去重 
+      v_set = set([str(c) for c in combination])   
+      if v_set not in v_set_list:
+        v_set_list.append(v_set)      
+        one_batch = []
+        for index in range(len(combination)): #遍历sub_batch
+          sub_batch = [dg_sorted_list[i] for i in combination[index]]
+          wds_list = [dg_wds_dict[s] for s in sub_batch]
+          #过滤条件3：internal dates 
+          if np.max(wds_list)-np.min(wds_list)>internal_days_limit:
+            break           
+          else:
+            one_batch.append(sub_batch)      
+        if len(one_batch)==len(combination): #没有sub_batch被break
+          batches_list.append(one_batch)
+    #与当前其他cg组合
+    if len(all_batches)==0:
+      all_batches = batches_list
+    else:
+      temp_all_batches = []
+      for b1 in all_batches:
+        for b2 in batches_list:
+          temp_all_batches.append(b1+b2)
+      all_batches = temp_all_batches
+  #加batch name
+  final_batches = [] 
+  for batch in all_batches: 
+    batch_dict = {}
+    for index in range(len(batch)): #遍历sub_batch
+      b_key = 'b'+str(index)
+      batch_dict[b_key] = batch[index]      
+    final_batches.append(batch_dict)
+
+  return final_batches  
+
+
 # ------ 1.1 filter ------
 
 

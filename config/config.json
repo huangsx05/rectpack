@@ -1,4 +1,32 @@
 {
+  "1_OCOD": {
+    "algo_params": {
+      "input_mode": "json",
+      "layout_mode": "one_dg_one_column", 
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "optimize_pds_level": "sku",
+      "n_jobs": 8,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
+      "algo_time_limit": 60,
+      "timeout_limit": 36000                                 
+    }                 
+  },  
+  "2_OCMD": {
+    "algo_params": {
+      "input_mode": "json",
+      "layout_mode": "one_dg_one_column", 
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "optimize_pds_level": "sku",
+      "n_jobs": 8,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
+      "algo_time_limit": 60,
+      "timeout_limit": 36000                                 
+    }                 
+  },    
   "3_MCMD_Seperater": {
     "algo_params": {
       "input_mode": "json",
@@ -17,6 +45,26 @@
       "sample_batch_num": 8,      
       "algo_time_limit": 60,
       "timeout_limit": 36000                                 
-    }                 
+    }
+  },                    
+  "4_MCMD_No_Seperater": {
+    "algo_params": {
+      "input_mode": "json",
+      "layout_mode": "one_dg_one_column", 
+      "layout_tolerance": 0,           
+      "criteria_check": 0,
+      "heuristics_batches_max_area_first": "True",
+      "heuristics_batches_min_area_first": "True",
+      "iterate_all_batches": "True",
+      "iterate_n_dg_threshold": 10,            
+      "iterate_n_cg_threshold": 8,       
+      "all_batch_generate_mode": "combinations",
+      "optimize_pds_level": "sku",
+      "n_jobs": 8,
+      "n_sample_per_job": 4,
+      "sample_batch_num": 8,      
+      "algo_time_limit": 60,
+      "timeout_limit": 36000                                 
+    }                     
   }
 }

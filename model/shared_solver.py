@@ -400,9 +400,13 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     color = int(params_dict['user_params']['color']) #注意这里的color和cg不一样
     if machine=="ATMA" or machine=="Sakurai":
       sub_metric_color_pds = (color+1)*3.5
+      sub_metric_color_pds = np.ceil(sub_metric_color_pds) 
     elif machine=="INDIGO":
-      sub_metric_color_pds = (color+1)*3.5 + color*2  
-    sub_metric_color_pds = np.ceil(sub_metric_color_pds)   
+      sub_metric_color_pds_screen = (color+1)*3.5
+      sub_metric_color_pds_print = color*2  
+      sub_metric_color_pds_screen = np.ceil(sub_metric_color_pds_screen) 
+      sub_metric_color_pds_print = np.ceil(sub_metric_color_pds_print)
+      sub_metric_color_pds = sub_metric_color_pds_screen+sub_metric_color_pds_print
 
     #metric_2.2: 中离损耗
     setUpPerInkSeperator = int(params_dict['user_params']['setUpPerInkSeperator'])
@@ -412,12 +416,22 @@ def get_best_sheetsize_for_one_dg_comb(dg_id,cg_id,label_w_list,label_h_list,re_
     #metric_3: Process Scrap 
     if machine=="ATMA" or machine=="Sakurai":
       sub_metric_process_scrap_pds = pds*runWaste
+      sub_metric_process_scrap_pds = np.ceil(sub_metric_process_scrap_pds) 
     elif machine=="INDIGO":
-      sub_metric_process_scrap_pds = pds*(runWaste+0.058) 
-    sub_metric_process_scrap_pds = np.ceil(sub_metric_process_scrap_pds)        
+      sub_metric_process_scrap_pds_screen = pds*0.058
+      sub_metric_process_scrap_pds_screen = np.ceil(sub_metric_process_scrap_pds_screen)        
+      sub_metric_process_scrap_pds_print = (pds+sub_metric_color_pds_screen+sub_metric_process_scrap_pds_screen)*runWaste
+      sub_metric_process_scrap_pds_print = np.ceil(sub_metric_process_scrap_pds_print)  
+      sub_metric_process_scrap_pds = sub_metric_process_scrap_pds_screen+sub_metric_process_scrap_pds_print
+
+    #metric_4: pre-scrap
+    if machine=="ATMA" or machine=="Sakurai":
+      pre_scrap_pds = 0
+    elif machine=="INDIGO":
+      pre_scrap_pds = 8 
 
     #总目标
-    tot_area = (pds+sub_metric_color_pds+sub_metric_ink_sep_pds+sub_metric_process_scrap_pds)*sheet_weight
+    tot_area = (pds+sub_metric_color_pds+sub_metric_ink_sep_pds+sub_metric_process_scrap_pds+pre_scrap_pds)*sheet_weight
     # tot_area += (sub_metric_ink_sep_pds) 
     tot_area = np.ceil(tot_area)   
     metrics_dict = {'machine':machine,
@@ -600,8 +614,8 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   res_batch = {}
   break_flag = 0 #用于控制结果不可能更优时退出当前batch  
   
-  # 当前函数会用到的params
-  add_pds_per_sheet = int(params_dict['user_params']['add_pds_per_sheet'])
+  # # 当前函数会用到的params
+  # add_pds_per_sheet = int(params_dict['user_params']['add_pds_per_sheet'])
 
   #获得batch
   batch_name = 'batch_'+str(batch_i)
@@ -672,9 +686,11 @@ def calculate_one_batch(batch_i, pre_n_count, batches, df_3,
   for k,v in res_batch.items():
     #考虑pds和sheet_weight
     metric += v['min_tot_area'] #metric_1.1: pds*weight
-  #再考虑版数和pds之间的权衡
-  add_metric = np.ceil(len(res_batch)*add_pds_per_sheet)
-  metric += add_metric #metric_1.2: 版数  
+  # #再考虑版数和pds之间的权衡
+  # add_metric = np.ceil(len(res_batch)*add_pds_per_sheet)
+  # metric += add_metric #metric_1.2: 版数  
+  #再考虑pre-setup (temp for Digital)
+  # metric += 8
 
   # if metric < best_metric:
   #   best_metric = metric

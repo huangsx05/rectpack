@@ -4,6 +4,7 @@ import random
 from datetime import timedelta, datetime
 from joblib import Parallel, delayed
 from model.ocod_solver import get_batches_ocod
+from model.ocmd_solver import get_batches_ocmd
 from model.shared_solver import get_batches_heuristics_max_area_first, get_batches_heuristics_min_area_first, get_batches_with_filter, get_batches_by_partitions, filter_batches_with_criteria, calculate_one_batch
 from utils.tools import calculate_best_batch
 
@@ -46,7 +47,7 @@ def runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_3):
   if batching_type in ["1_OCOD"]:  
     heuristics_batches_list = get_batches_ocod(df_3)
   elif batching_type in ["2_OCMD"]: 
-    pass  
+    heuristics_batches_list = get_batches_ocmd(df_3, internal_days_limit)
   elif batching_type in ['3_MCMD_Seperater', '4_MCMD_No_Seperater']:  
     run_maxA = params_dict['algo_params']['heuristics_batches_max_area_first']
     run_minA = params_dict['algo_params']['heuristics_batches_min_area_first']

@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-pip install sympy
+# pip install sympy
 
 # COMMAND ----------
 
@@ -32,7 +32,7 @@ with open(user_params_path, "r", encoding="utf-8") as f:
 print(input_params)
 
 #job inputs
-input_file = '../input/HTL_input_0614.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', '../input/HTL_input_0614.csv'
+input_file = '../input/HTL_input_0703_data3.csv' #'../input/HTL_input_0419.csv','../input/HTL_input_0519.csv', '../input/HTL_input_0614.csv'
 filter_Color_Group = [] #空代表不筛选，全部计算
 # filter_Color_Group = ['CG_22', 'CG_23', 'CG_24', 'CG_26', 'CG_27', 'CG_28', 'CG_29', 'CG_30']
 # filter_Color_Group = ['CG_35']
@@ -69,16 +69,18 @@ def main(input_params):
   start_time = datetime.now() 
   print(f"[{datetime.now()}]: ------ start main batching ------")
   #---------------------------------------------------------------------------------------------------------
-  if batching_type == '1_OCOD':
+  if batching_type in ['1_OCOD','2_OCMD','3_MCMD_Seperater','4_MCMD_No_Seperater']:
     from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
     best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_1)
-  elif batching_type == '2_OCMD':
-    pass
-  elif batching_type == '3_MCMD_Seperater':  
-    from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
-    best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_1)
-  elif batching_type == '4_MCMD_No_Seperater':
-    pass
+  else:
+    print("unrecognized batching type!!!")
+  # elif batching_type == '2_OCMD':
+  #   pass
+  # elif batching_type == '3_MCMD_Seperater':  
+  #   from sub_main.runner_3_mcmd_seperater import runner_3_mcmd_seperator_sku_pds
+  #   best_index, best_batch, best_res = runner_3_mcmd_seperator_sku_pds(start_time, params_dict, df, df_1)
+  # elif batching_type == '4_MCMD_No_Seperater':
+  #   pass
   #---------------------------------------------------------------------------------------------------------  
   print(f"[{datetime.now()}]: ------ end main batching ------")
   return df, df_1, params_dict, best_index, best_batch, best_res
